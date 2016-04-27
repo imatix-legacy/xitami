@@ -19,7 +19,7 @@ There was a later "beta" release, [Xitami
 http://legacy.imatix.com/ website, clearly updated *after* the
 change of the main iMatix website.  This is not presented here
 because (a) it is [already on the iMatix GitHub
-Page]((https://github.com/imatix/Xitami-25) and (b) it is not
+Page](https://github.com/imatix/Xitami-25) and (b) it is not
 consistent with the snapshot of the iMatix website shown.
 
 The license for SMT is in [src/license.txt](src/license.txt).  Briefly
@@ -36,7 +36,7 @@ released in a stand alone version, retrieved from:
 
 on 2016-04-28.
 
-See the [documentation](https://imatix-legacy.github.io/xitami) for
+See the [documentation](https://imatix-legacy.github.io/xitami/) for
 more details on Xitami 2.4d7.  There is also the [website from
 Xitami 2.5b4](https://imatix-legacy.github.io/xitami/25b4/) in a
 subirectory for reference, and the source [Xitami
