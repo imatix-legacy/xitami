@@ -1,0 +1,131 @@
+<HTML><HEAD><!--Revised: 25 Jul, 2000 By: iMatix Corporation-->
+<TITLE>Using SSI and Filters</TITLE></HEAD>
+<BODY BGCOLOR="#87CEFA">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A href="http://www.imatix.com/">iMatix home page</A><BR>
+ | <A HREF="index.htm"> Xitami home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="index5.htm">&lt;</A>
+ | <A href="index7.htm">&gt;</A> | <A href="license.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="xitami1.gif" ALT="Xitami" WIDTH=100 HEIGHT=75 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=4><B>Xitami</B><BR><FONT SIZE=2>Version 2.5b4
+</TABLE>
+<HR>
+
+<H2><A NAME="TOC64">Using SSI and Filters</A></H2>
+
+<P>Xitami supports filter programs in Perl, C, or any other language that your
+system supports. A filter program runs when the HTML page is displayed,
+unlike a CGI program, which runs when the user posts data from a HTML form.
+Xitami provides a standard SSI filter (PerlSSI) which requires a Perl
+interpreter. This is not meant for heavy-duty work, but is a good example of
+a filter. (We intend to develop a fast SSI module that will be embedded into
+the server directly.) Another example of a filter program is PHP 3.0, which
+Xitami supports.
+
+<P>To add your own filter programs, you add an entry in the [Filter] section
+of the config file. A filter program is invoked whenever a file with the
+appropriate extension is displayed.
+
+<P>Filter programs need to respect the rules for CGI programs. That is, they
+should generate the same type of header (Content-Type: text/html). Filter
+programs also get the standard CGI environment, and are subject to the CGI
+timeouts and other constraints set in the [CGI] section.
+
+<P>When you POST to a filter program, the form data is supplied on the
+standard input as for CGI programs. When you use the GET method, the file
+that is being filtered is provided on the standard input.
+
+<H3><A NAME="TOC65">The SSI Filter</A></H3>
+
+<P>SSI (server-side includes) is a fairly standard syntax which you can read
+about on the <A href="http://hoohoo.ncsa.uiuc.edu/docs/tutorials/includes.html">NCSA</A> site. We implemented all the common SSI tags in the
+PerlSSI filter. To use this, you need Perl on your system (it should be on
+the PATH). The PerlSSI filter is slow, and meant as a work-around until we
+implement SSI the correct way, in the server itself. The PerlSSI filter is
+located in the Xitami directory itself. To run it, you must have Perl
+installed. The requirements for this filter are the same as for a Perl CGI
+program.
+
+<P>By default, Xitami recognises any document with extension '.ssi',
+'.shtm', or '.shtml' as an SSI document. This is defined in the [Filters]
+section of the configuration files.
+
+<P>The SSI documents are placed in the normal web pages directory, and are
+recognised purely by their extension, not the path.
+
+<P>Xitami supports these SSI tags:
+
+<TABLE>
+<TR><TH>Element syntax:         <TH>Effect:</TR>
+<TR><TD>#config errmsg="text"
+    <TD>Specify the SSI error message.
+<TR><TD>#config sizefmt="format"
+    <TD>Specify whether file sizes are shown in full, or abbreviated.
+    Use the format 'abbrev' to show abbreviated sizes.
+<TR><TD>#config timefmt="format"
+    <TD>Specify the format used for file times. By default this
+    is: "%A, %d-%b-%y %H:%M:%S %Z". Note: the current implementation of SSI
+    ignores the timefmt, and always uses the default time format.
+<TR><TD>#echo var="variable"
+    <TD>Output the value of the specified variable. Xitami recognises these
+    variables: DOCUMENT_NAME, DOCUMENT_URI, DATE_GMT, DATE_LOCAL, LAST_MODIFIED,
+    and any environment variable (including the standard CGI environment variables).
+<TR><TD>#exec cgi="pathname"
+    <TD>Outputs the result of the CGI program, which must be in the CGI binary
+    directory (it cannot be on a CGI alias directory). Note that the CGI program
+    runs in the main Xitami directory.
+<TR><TD>#exec cmd="command"
+    <TD>Executes a native command and includes the output of this command. Note that
+    the command runs in the main Xitami directory. This SSI command - which is a
+    potential security risk for your system - is only accepted if the environment
+    variable SSI_INSECURE is set to 'yes'. (Under Windows NT, in the System Control
+    Panel, under 'Environment'; under Windows 95 by adding 'SET SSI_INSECURE=yes'
+    to the autoexec.bat.)
+<TR><TD>#include virtual="filename"
+    <TD>Includes the contents of the specified URI, which is assumed to be within
+    the webpages root. Note that aliases are not supported in the current
+    implementation.
+<TR><TD>#include file="filename"
+    <TD>Includes the contents of the specified file, which may be anywhere in the
+    file system space.
+<TR><TD>#flastmod {virtual|file}="filename"
+    <TD>Outputs the time that the specified file was last modified. The file can be
+    a URI within the webpages root, or an absolute filename, depending on whether
+    'virtual' or 'file' is specified.
+<TR><TD>#fsize {virtual|file}="filename"
+    <TD>Outputs the size of the specified URL or file, using the sizefmt.
+</TABLE>
+
+<P>With a small knowledge of Perl, you can easily modify the Perlssi filter
+to add support for other tags.
+
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="index5.htm">&lt;</A>
+ | <A href="index7.htm">&gt;</A> | <A href="license.htm">&gt;&gt;</A>
+<BR><FONT SIZE=2>
+| <A href="index.htm">Welcome To Xitami</A>
+| <A href="index1.htm">Table Of Contents</A>
+| <A href="index2.htm">Installing Xitami</A>
+| <A href="index3.htm">Administration</A>
+| <A href="index4.htm">Configuration</A>
+| <A href="index5.htm">Using The Common Gateway Interface (CGI)</A>
+| <EM>Using SSI and Filters</EM>
+| <A href="index7.htm">Image Maps</A>
+| <A href="index8.htm">Virtual Hosts</A>
+| <A href="index9.htm">The FTP Service</A>
+| <A href="index10.htm">A Beginner's Guide</A>
+| <A href="index11.htm">Writing Web Server Extension (WSX) Agents</A>
+| <A href="index12.htm">Extending Xitami with External Peer Processes</A>
+| <A href="index13.htm">FAQ</A>
+| <A href="index14.htm">Technical Implementation</A>
+| <A href="index15.htm">Getting Support</A>
+| <A href="index16.htm">Release History</A>
+| <A href="license.htm">License Agreement</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0>
+</A>
+<BR><FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

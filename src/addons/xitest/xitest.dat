@@ -1,0 +1,368 @@
+#   Regression tests for Xitami.
+#
+#   Written:  1998/03/20  Xitami team <xitami@imatix.com>
+#   Revised:  1999/01/06
+#
+#   Syntax:
+#      Comments can be introduced with "#".  Blank lines are ignored, except
+#      in multiline regular expressions.  All configuration options should
+#      be hard left (no leading space).  Request blocks are terminated by
+#      a blank line (only white space, if anything).
+#
+#      ---------- Global Configuration ----------
+#      Server=serveraddress                        # Default = localhost
+#      Port=port number                            # Default = 80
+#      Sleep=seconds-after-each-request            # Default = 0
+#
+#      ----------- Per Request Items ------------
+#      URI=path-to-retrieve                        # REQUIRED
+#      RC=expected-return-code                     # REQUIRED
+#      Method={GET|POST|}                          # Default "GET"
+#      HeaderLine=line                             # Optional
+#      CompareFile=file-to-compare-body-with       # Optional
+#      CompareRegex=regular-expression             # Optional
+#      Description=description of test             # Optional
+#
+#      If CompareFile is used then test is considered successful only if
+#      the body conforms to what is found in the file.  If CompareRegex
+#      is used then test is considered successful only if the response
+#      matches the regex.  Regex is matched against header _and_ body.
+#
+#      If neither CompareFile or CompareRegex is used, then the test
+#      is considered successful if the return code matches.
+#
+#      HeaderLine can be used to pass a line to the HTTP server as
+#      part of the request.
+#
+#      If the Description is not given, then the URI will be used.
+#
+#      Lines ending with "\" are continued on the next line.
+#
+#---------------------------------------------------------------------------
+
+# These tests are intended to be conducted against the Xitami default
+# installation, with the default web pages, etc.
+
+# Basic tests
+Server=localhost
+URI=/
+RC=200
+
+URI=/default.htm
+RC=200
+
+URI=/default.html
+RC=200
+
+# Trailing slash is not valid
+URI=/default.htm/
+RC=404
+
+# No such file
+URI=/nosuch.htm
+RC=404
+
+# No such file, directory with hyphen
+URI=/no-such/nosuch.htm
+RC=404
+
+# No such file, long filenames
+URI=/No such directory/nosuch.htm
+RC=404
+
+# No such file, directory with dots
+URI=/no.such.directory/nosuch.htm
+RC=404
+
+# Access to CGI file with extension
+URI=/cgi-bin/testcgi.exe
+RC=200
+
+# Access to CGI file without extension
+URI=/cgi-bin/testcgi
+RC=200
+
+# Access to CGI file with error in path
+URI=/cgi-bintestcgi
+RC=404
+
+# Access to CGI file with extension
+URI=/cgi-bin/testcgi.exe
+HeaderLine=Accept-Language: en, fr;q=0.1,de
+Description=testcgi.exe with multilanguage accept
+RC=200
+
+# Access to CGI file without extension
+URI=/cgi-bin/testcgi
+HeaderLine=Accept-Language: en, fr;q=0.1,de
+Description=testcgi with multilanguage accept
+RC=200
+
+# References to parent directories
+URI=/../../default.htm
+RC=200
+
+# URI without leading /
+URI=garbage
+RC=404
+
+# Invalid request (no GET/POST)
+URI=garbage
+Method=
+RC=501
+
+# Excessively long requests (testing for server crash)
+URI=/junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk
+Description=Long request
+RC=413
+
+URI=/junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk
+Description=Very long request
+RC=413
+
+# Long optional parameters to the URL, should return the URL itself.
+URI=/?junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk
+Description=Long optional parameters
+RC=200
+
+URI=/?junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk\
+junkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunkjunk
+Description=Very long optional parameters
+RC=200
+
+# Access imagemap, with valid coordinates -- this one should return
+# the licence information.
+URI=/buttons.map?315,16
+Description=Imagemap: Valid Request
+RC=302
+
+# Access imagemap, with valid coordinates -- this one should call
+# the testcgi program
+URI=/buttons.map?110,10
+Description=Imagemap: Valid Request
+RC=302
+
+# Access imagemap, below bottom left
+URI=/buttons.map?-10,-10
+Description=Imagemap: Below bottom left
+RC=302
+
+# Access imagemap, above top right
+URI=/buttons.map?1000,500
+Description=Imagemap: Above top right
+RC=302
+
+# Access imagemap, above top left
+URI=/buttons.map?-10, 100
+Description=Imagemap: Above top left
+RC=302
+
+# Access imagemap, below bottom right
+URI=/buttons.map?1000,-10
+Description=Imagemap: Below bottom right
+RC=302
+
+# Access imagemap, with only one coordinate
+URI=/buttons.map?200
+Description=Imagemap: Only one coordinate
+RC=302
+
+# Access imagemap, with one coordinate and a comma
+URI=/buttons.map?200,
+Description=Imagemap: 1 coordinate, trailing comma
+RC=302
+
+# Access imagemap, with leading comma
+URI=/buttons.map?,50
+Description=Imagemap: Leading comma, one coordinate
+RC=302
+
+# Access imagemap, too many values
+URI=/buttons.map?50,50,50
+Description=Imagemap: Too many values
+RC=302
+
+# Request for default page with multilanguage accept
+URI=/
+HeaderLine=Accept-Language: en, fr;q=0.1,de
+Description=Default page with multilanguage accept
+RC=200
+
+# Request for non-existing multilanguage page
+URI=/nosuch.htm
+HeaderLine=Accept-Language: en, fr;q=0.1,de
+Description=Unknown page with multilanguage accept
+RC=404
+
+# Request for page which has not been modified
+URI=/
+HeaderLine=If-Modified-Since: Monday, 31-Dec-27 12:00:00 GMT
+Description=Get page, not modified
+RC=304
+
+# Request for private information, without authorisation
+URI=/private
+RC=302
+
+URI=/private/
+RC=401
+
+URI=/PRIVATE/
+RC=401
+
+URI=/../../private/
+RC=401
+
+# Request for private information, with partial authorisation
+# information (no user, no password, just Authorization: line)
+URI=/private/
+HeaderLine=Authorization:
+Description=Empty Authorization line
+RC=401
+
+URI=/private/
+HeaderLine=Authorization: Basic
+Description=Authorization just says "Basic"
+RC=401
+
+URI=/private/
+HeaderLine=Authorization: Basic Og==
+Description=Access with no user, no password
+RC=401
+
+# Request for private information, invalid user, no password
+URI=/private/
+HeaderLine=Authorization: Basic aW52YWxpZDo=
+Description=Access with invalid user, no password
+RC=401
+
+# Request for private information, valid user, no password
+URI=/private/
+HeaderLine=Authorization: Basic amFja3k6
+Description=Access with valid user, no password
+RC=401
+
+# Request for private information, invalid user and password
+URI=/private/
+HeaderLine=Authorization: Basic aW52YWxpZDppbnZhbGlk
+Description=Access with invalid user and password
+RC=401
+
+# Request for private information, valid user and password
+URI=/private/private.htm
+HeaderLine=Authorization: Basic amFja3k6cm9idXN0YQ==
+Description=Access with valid user and password
+RC=200
+
+# Request for error simulations
+URI=/error-test?301
+RC=301
+
+URI=/error-test?402
+RC=402
+
+
+#---------------------------------------------------------------------------

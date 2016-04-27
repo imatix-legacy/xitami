@@ -1,0 +1,345 @@
+/*  ----------------------------------------------------------------<Prolog>-
+    Name:       sflprocu.imp
+    Title:      process_create_full -- unix implementation
+    Package:    Standard Function Library (SFL)
+
+    Written:    98/10/19  iMatix SFL project team <sfl@imatix.com>
+    Revised:    99/01/02
+
+    Copyright:  Copyright (c) 1991-99 iMatix Corporation
+    License:    This is free software; you can redistribute it and/or modify
+                it under the terms of the SFL License Agreement as provided
+                in the file LICENSE.TXT.  This software is distributed in
+                the hope that it will be useful, but without any warranty.
+ ------------------------------------------------------------------</Prolog>-*/
+
+/*  unix Implementation of the SFL process_create_full() function            */
+/*  This function receives input in the form of a pointer to a PROC_DATA     */
+/*  structure called procinfo.  See sflproc.c for details.                   */
+
+/*  The general strategy here is to perform some very basic checks, and then */
+/*  create a pipe (for child -> parent communication), and fork off a new    */
+/*  process.  The new (child) process then does all the rest of the checking */
+/*  and setup.  This strategy is used for two reasons: firstly if we aren't  */
+/*  waiting to find out if there are any errors it is faster, and secondly   */
+/*  it means memory allocation, etc is less critical as it is done in a      */
+/*  process that will soon be overwritten (by exec*()), or abandoned.        */
+
+/*  Processing is done in the order required to ensure that the process has  */
+/*  the rights required to do the next step; in particular the chroot() is   */
+/*  done prior to the setgid() and setuid() (if any), all of which are done  */
+/*  prior to the chdir(), and exec*().                                       */
+
+    pid_t
+        fork_result;                    /*  Result from fork()               */
+    int
+        pipe_handle [2],                /*  Parent-to-child pipe             */
+        pipe_readsize,                  /*  Amount of data read from pipe    */
+        pipe_data;                      /*  Data read from pipe              */
+    const char
+        *filename_only = NULL,          /*  Filename, without arguments      */
+        *path = procinfo-> path;        /*  Path to search for filename      */
+    char
+        *clean_filename,                /*  Unescaped filename               */
+        *full_filename;                 /*  File to execute, with path       */
+    char 
+        **argv = procinfo-> argv,       /*  Arguments to program             */
+        **envv = procinfo-> envv;       /*  Program environment              */
+
+    /*  First, check that minimum arguments needed to do something are set   */
+    ASSERT(procinfo);
+    ASSERT(procinfo-> filename);
+    if (! procinfo)
+        return NULL_PROCESS;
+
+    procinfo-> pid = NULL_PROCESS;
+    procinfo-> error = 0;
+    procinfo-> returncode = -1;
+
+    if (! (procinfo-> filename))
+      {
+        procinfo-> error = EINVAL;
+        return NULL_PROCESS;
+      }
+
+    /*  Create pipe for feedback from child to parent; quit if this fails    */
+    if (pipe (pipe_handle))
+      {
+        procinfo-> error = errno; 
+        return NULL_PROCESS;
+      }
+
+    /*  Create subprocess - this returns 0 if we are the child, the pid if   */
+    /*  we are the parent, or -1 if there was an error (not enough memory).  */
+    fork_result = fork ();
+
+    if (fork_result < 0)                /*  < 0 is an error                  */
+      {
+        procinfo-> error = errno;
+        close (pipe_handle [0]);        /*  Close the pipe                   */
+        close (pipe_handle [1]);
+        return NULL_PROCESS;            /*  Could not fork                   */
+      }
+    else
+    if (fork_result > 0)                /*  > 0 is the parent process        */
+      {
+        /*  --- PARENT PROCESS HANDLING ------------------------------------ */
+        /*  If the child process has a problem with the exec() call, it      */
+        /*  sends us an errno value across the pipe.  If the exec() call     */
+        /*  works okay, we get no feedback across the pipe.  We wait for a   */
+        /*  small time (number of msecs specified by "delay").  If nothing   */
+        /*  comes across the pipe, we assume everything went okay.           */
+
+        /*  We also close the write end of the pipe here, and set the pipe   */
+        /*  to close-on-exec in the child process, so the pipe closing lets  */
+        /*  us know that the exec*() is taking place.                        */
+
+        close (pipe_handle [1]);        /*  Close the write handle           */
+
+        if (procinfo-> delay > 0)
+          {
+            fd_set readset;             /*  select() on input end of pipe    */
+            struct timeval
+                timeout;                /*  Wait for response from child     */
+
+            FD_ZERO (&readset);
+            FD_SET  (pipe_handle [0], &readset);
+
+            timeout.tv_sec  =  procinfo-> delay / 1000;
+            timeout.tv_usec = (procinfo-> delay % 1000) * 1000;
+
+            /*  Now wait for data on the pipe until it arrives or time out   */
+            if (select ( (pipe_handle [0] + 1), &readset, NULL, NULL, &timeout)
+                  > 0)
+              {
+                 /*  Something has happened on the pipe; either it closed or */
+                 /*  there is some data to read.  Assume we get all the data */
+                 pipe_readsize = read (pipe_handle [0], &pipe_data, 
+                                       sizeof (pipe_data));
+              }
+            else
+              {
+                 /*  Nothing turned up to read, nor did it close; pretent    */
+                 /*  the read was interrupted.                               */
+                 pipe_readsize = -1;
+                 errno = EINTR;
+              }
+          }
+        else
+            pipe_readsize = 0;
+
+        close (pipe_handle [0]);        /*  Close the pipe                   */
+        close (pipe_handle [1]);
+
+        if (pipe_readsize == -1)
+          {
+            if (errno == EBADF || errno == EINTR)
+              {
+                /*  Normal - SIGALRM arrived or FD_CLOEXEC worked :)         */
+                if (procinfo-> wait)
+                    procinfo-> returncode = waitpid (fork_result, 0, 0);
+
+                procinfo-> pid = ((PROCESS) fork_result);
+                return ((PROCESS) fork_result);
+              }
+            else
+                return NULL_PROCESS;    /*  Error on read()                  */
+          }
+        else
+        /*  We come here if process_delay was zero, or FD_CLOEXEC did its    */
+        /*  job and the pipe was closed by the child process.                */
+        if (pipe_readsize == 0)
+          {
+            if (procinfo-> wait)
+                procinfo-> returncode = waitpid (fork_result, 0, 0);
+
+            procinfo-> pid = ((PROCESS) fork_result);
+            return ((PROCESS) fork_result);
+          }
+        else
+          {
+            /*  We read data from the pipe - this is an error feedback from  */
+            /*  the child - i.e. file not found, or a permission problem.    */
+            procinfo-> error = pipe_data;   /*  Save it for the caller       */
+            return NULL_PROCESS;
+          }
+
+        ASSERT(FALSE);                      /*  Unreachable                  */
+        return NULL_PROCESS;
+      }
+    /*  --- CHILD PROCESS HANDLING ----------------------------------------- */
+    /*  Prepare the process environment and execute the file                 */
+    /*  If anything goes wrong we write the error number back across the     */
+    /*  pipe to our parent, and exit.                                        */
+
+/*  This macro is used to "give up" -- sending the error to the parent, and  */
+/*  then exiting.  The scope is used to allow us to define a variable to     */
+/*  hold the value to be sent, so we can be sure that we can take its address*/
+#define SEND_ERROR_AND_EXIT(errcode)                                 \
+    {                                                                \
+      int SEAE_error = errcode;                                      \
+      write (pipe_handle [1], &(SEAE_error), sizeof (SEAE_error));   \
+      exit(EXIT_FAILURE);                                            \
+    }
+
+    /*  If we are running at a new root location, or we need to change uid   */
+    /*  or gid, do it now, in order to minimise the amount of time we have   */
+    /*  more privilege than we eventually will have.                         */
+
+    /*  Change root directory, if required                                   */
+    if (procinfo-> rootdir)
+        if (chroot(procinfo-> rootdir) == -1)
+            SEND_ERROR_AND_EXIT(errno);
+
+    /*  Change uid and gid if required; uid last in case we are currently    */
+    /*  privileged and need that privilege to set the gid                    */
+    if (procinfo-> dosetgid)
+        if (setgid (procinfo-> gid) == -1)
+            SEND_ERROR_AND_EXIT(errno);
+
+    if (procinfo-> dosetuid)
+        if (setuid (procinfo-> uid) == -1)
+            SEND_ERROR_AND_EXIT(errno);
+
+
+    /*  Put in defaults for options                                          */
+    if (!path)
+        path = "PATH";                     /*  Path to search for program    */
+
+    /*  If argv[] array was not supplied, build it now from filename         */
+    /*  unless we are to run using a shell, in which case we use the filename*/
+    /*  as is, as a single command to the shell.                             */
+    /*  And pull out the name of the file that we want to run.               */
+    if (!argv)
+      { 
+        if (procinfo-> useshell)
+          { /*  const cast away on filename, to keep compiler happy; see     */
+            /*  note in sflproco.imp for reasons.                            */
+            char *fakeargv[2] = { NULL, NULL };
+            fakeargv[0] = (char *)procinfo-> filename;
+            argv = prefix_argv_with_shell (fakeargv, procinfo-> shell);
+          } 
+        else
+            argv = tok_split (procinfo-> filename);
+
+        if (!argv)
+          SEND_ERROR_AND_EXIT(errno);
+
+        /*  The filename, and only the filename, is the 0th argument         */
+        filename_only = argv[0];
+      }
+    else
+      { 
+        /*  If we're supposed to use a shell, then put that in argv now      */
+        if (procinfo-> useshell)
+          {
+            argv = prefix_argv_with_shell (argv, procinfo-> shell);    /*LEAK*/
+
+            if (!argv)
+                SEND_ERROR_AND_EXIT(errno);
+
+            filename_only = argv[0];
+          }
+        else  /*  Have argv, no need to shell, so filename is just filename  */
+            filename_only = procinfo-> filename;
+      }
+
+    if (procinfo-> envadd != NULL || procinfo-> envrm != NULL)
+      {
+        if (envv != NULL)
+            envv = merge_environment (envv,    procinfo-> envadd, 
+                                               procinfo-> envrm);
+        else 
+            envv = merge_environment (environ, procinfo-> envadd, 
+                                               procinfo-> envrm);
+
+        if (!envv)
+            SEND_ERROR_AND_EXIT(errno);
+      }
+
+    /*  Redirect the IO file handles for stdin, stdout, stderr               */
+    if (procinfo-> in != NULL_HANDLE)
+       if (redirect_io_fh (procinfo-> in,   STDIN_FILENO)  < 0)
+           SEND_ERROR_AND_EXIT(errno);
+
+    if (procinfo-> out != NULL_HANDLE)
+        if (redirect_io_fh (procinfo-> out, STDOUT_FILENO) < 0)
+            SEND_ERROR_AND_EXIT(errno);
+
+    if (procinfo-> err != NULL_HANDLE)
+        if (redirect_io_fh (procinfo-> err, STDERR_FILENO) < 0)
+            SEND_ERROR_AND_EXIT(errno);
+
+    /*  Mark extra file handles to close when we exec()                      */
+    if (procinfo-> no_handles < FILEHANDLE_MAX)
+      {
+        int fh;
+        for (fh = procinfo-> no_handles; fh < FILEHANDLE_MAX; fh++)
+            fcntl (fh, F_SETFD, FD_CLOEXEC);         /*  Ignore errors       */
+      }
+
+    /*  Find file on path, make sure it is executable                        */
+    /*  This is a good moment to unescape any spaces in the filename...      */
+
+    ASSERT(filename_only);
+
+    clean_filename = process_unesc (NULL, filename_only);
+    if (procinfo-> searchpath)
+        full_filename = file_where ('r', path, clean_filename, NULL);
+    else
+        full_filename = file_where ('r', NULL, clean_filename, NULL);
+    mem_free (clean_filename);
+
+    if (full_filename == NULL)
+        SEND_ERROR_AND_EXIT(ENOENT);    /*  No such file                     */
+
+    if (!file_is_executable (full_filename))
+        SEND_ERROR_AND_EXIT(EACCES);    /*  No permission to access file     */
+
+    /*  If requested, make this into a daemon process                        */
+    if (procinfo-> createdaemon)
+      { /*  XXX: Maybe we should have a lockfilename as well?                */
+        ASSERT(procinfo-> workdir);
+        if (process_server (procinfo-> workdir, NULL, 0, NULL, NULL) == -1)
+            SEND_ERROR_AND_EXIT(errno);
+      }
+    else
+    /*  If requested, change to working directory                            */
+    if (procinfo-> workdir)
+        if (chdir (procinfo-> workdir) == -1)
+            SEND_ERROR_AND_EXIT(errno);
+
+    /*  Tell the system to close the pipe when we've done the exec()         */
+    fcntl (pipe_handle [0], F_SETFD, FD_CLOEXEC);
+    fcntl (pipe_handle [1], F_SETFD, FD_CLOEXEC);
+
+#if defined(DEBUG)
+    {
+       char **arg = argv;
+       fprintf(stderr, "Executing: \"%s\" ", full_filename);
+       while(*arg)
+       {
+         fprintf(stderr, "\"%s\" ", *arg);
+         ++arg;
+       }
+       fprintf(stderr, "\n");
+       fflush(stderr);
+    }
+#endif
+
+    /*  Execute the program - normally this call does not return, as it      */
+    /*  replaces the current process image by the new one.  If we ever do    */
+    /*  return, it is because there was an error.                            */
+    if (envv)                           /*  If caller provided envv, use it  */
+        execve (full_filename, argv, envv);
+    else                                /*  Otherwise use current values     */
+        execv  (full_filename, argv);
+
+    /*  If we're still here, then exec*() failed for some reason.  Tell our  */
+    /*  parent about this.                                                   */
+    SEND_ERROR_AND_EXIT(errno);
+
+    ASSERT(FALSE);                      /*  Unreachable                      */
+
+/*  ------------------------------------------------------------------------ */
+

@@ -1,0 +1,17 @@
+Hi Tucows,
+
+We can't find your 'update listing' page, so here is our latest version.
+
+Section: server daemons
+Product: Xitami Multithreaded Web Server
+
+XIW1621c.EXE - 16-bit Windows 3.x version
+XIW3221c.EXE - 32-bit Windows 95/NT version
+XIS3221c.EXE - 32-bit Windows NT service version
+
+Have an excellent New Year!
+
+--
+Pieter Hintjens
+iMatix
+

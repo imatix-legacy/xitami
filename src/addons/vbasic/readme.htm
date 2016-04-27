@@ -1,0 +1,123 @@
+<html>
+<head>                                                                   
+<title>CGI Workerman/HTML Converter README</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+</head>
+
+<body bgcolor="#FFFFFF">
+<a href="#CGIWORKERMAN">CGI Workerman 1.3</a><br>
+<a href="#HTMLCONV">HTML Converter for CGI Workerman 1.0</a> <hr>
+<h3><a name="CGIWORKERMAN"></a> CGI Workerman 1.3</h3>
+<p>This module is designed to help you writing a CGI program with Visual Basic. 
+  There are over 10 functions in this module, you can use them to process user 
+  data, cookies and URL encoding/decoding. Here is a list of these functions, 
+  and basic usages of them.</p>
+<p><b>Param(Key As String) As String: </b>Read a form field's value from client.<br>
+  Usually use it to read value from Textfield, Radio Button Group. Example: You 
+  have a tag like this<font color="#804000"> '&lt;INPUT TYPE=&quot;TEXT&quot; 
+  NAME=&quot;USERNAME&quot;&gt;'</font> in your HTML form and a user typed his 
+  name, &quot;Bob&quot;, in this text box. After he pushes 'Submit' button (Your 
+  script starts now), you can use <font color="#804000">Param(&quot;USERNAME&quot;)</font> 
+  to read his name. In this situation, it will return &quot;Bob&quot;. Notice 
+  that Key parmeter is NOT case sensitive. I mean, Param(&quot;username&quot;) 
+  will also return &quot;Bob&quot; in this situation.</p>
+<p><b>ParamExist(Key As String) As String: </b>Return True/False depending a form 
+  field is exist.<br>
+  Usually use it to read value from Checkbox. Example: You have a tag like this 
+  <font color="#804000">'&lt;INPUT TYPE=&quot;CHECKBOX&quot; NAME=&quot;ISMEMBER&quot;&gt;'</font> 
+  in your HTML form and a user checked it. After he pushes 'Submit' button, you 
+  can use this function to identify if this checkbox is checked. In this situation, 
+  it will return TRUE. but if he didn't checked it, it will return FALSE. The 
+  Key parmater is also NOT case sensitive.</p>
+<p><b>SendHeader(Text As String): </b>Send a header line to client.<br>
+  Use this subroutine to generate HTTP headers. In normally cases, you need to 
+  do this before you send any data to client:<br>
+  <font color="#804000">SendHeader(&quot;HTTP/1.0 200 OK&quot;)</font> <font color="#408080">' 
+  All the situation is OK. </font><br>
+  <font color="#804000">SendHeader(&quot;Content-type: text/html&quot;)</font> 
+  <font color="#408080">' This program will generate a HTML format data for response. 
+  </font><br>
+  Note this module will calcuate output data's length and automatically send it 
+  and current date/time in GMT format to client, you don't need to do that yourself.</p>
+<p><b>Send(Text As String): </b>Send a line with CR/LF as response to client.<br>
+  Use this subroutine to send your response data to client. Example:<br>
+  <font color="#804000">Send(&quot;&lt;HTML&gt;&lt;HEAD&gt;&lt;TITLE&gt;Hello 
+  World&lt;/TITLE&gt;&lt;/HEAD&gt;&quot;)</font><br>
+  <font color="#804000">Send(&quot;&lt;BODY&gt;&lt;H1&gt;Hello World&lt;/H1&gt;&lt;/BODY&gt;&lt;/HTML&gt;&quot;)</font><br>
+  It's just a &quot;Hello World&quot; example.</p>
+<p><b>Response(Text As String): </b>Send a line WITHOUT CR/LF as response to client.<br>
+  Like Send(), but it doesn't insert a CR/LF at line end. Example:<br>
+  <font color="#804000">Send(&quot;Line1&quot;):Send(&quot;Line2&quot;)</font><font color="#408080"> 
+  ' Send two line of text</font><br>
+  <i>Line1<br>
+  Line2 <br>
+  </i>But <font color="#804000">Response(&quot;Line1&quot;):Response(&quot;Line2&quot;)</font><font color="#408080"> 
+  ' Send two strings in a line</font><br>
+  Will get <i>&quot;Line1Line2&quot;</i> As Output.</p>
+<p><b>SetCookie, Cookie, CookieExist: </b>Cookie processing utilities. Please 
+  look at the module for more info.<br>
+  <b>URLEncode, URLDecode: </b>Encode or Decode a HTTP-Escaped string.<br>
+  It's useful when you want to generate a link to another (self) CGI program. 
+  Example:<br>
+  <font color="#804000">Send(&quot;&lt;A HREF=&quot;&quot;/cgi-bin/userdata.exe&quot; 
+  &amp; URLEncode(username) &amp; &quot;&amp;&quot; &amp; URLEncode(password) 
+  &amp; &quot;&quot;&quot;&gt;&quot;)<br>
+  <font color="#408080">' It's a link to another CGI program with two pre-generated 
+  arguments.</font></font></p>
+<p><b>WebDate(DateTime As Any Valid Date/Time Format): </b>An easy way to generate 
+  HTTP-standard GMT times.<br>
+  It's useful when you need to specify an expiration date for this document. Example:<br>
+  <font color="#804000">GMTOffset=28800<font color="#408080"> </font></font><font color="#408080">' 
+  Current time zone is GMT +8 hrs (28800 seconds)</font><br>
+  <font color="#804000">Print WebDate(&quot;10/09/98 21:17:00&quot;)<font color="#408080"> 
+  </font></font><font color="#408080">' Convert local time to HTTP-standard format</font><br>
+  <i>Fri 09 Oct 1998 13:17:00 GMT</i><br>
+  If you want to set expriration date for this output, simply do this:<br>
+  <font color="#804000">SendHeader(&quot;Expire: &quot; &amp; WebDate(DateAdd(&quot;H&quot;,2,Now)))</font> 
+  <font color="#408080">' This document will expire after 2 hours<br>
+  </font>Of course, If you want to set exactly expiration for a cookie (see SetCookie 
+  in module), you can also use DateAdd function.</p>
+<p>This module will load most useful server environments to a set of variables. 
+  For more information on this, please take a look at InitializeCGI() subroutine 
+  in this module.</p>
+<hr>
+<h3><a name="HTMLCONV"></a>HTML Converter for CGI Workerman 1.0</h3>
+<p>In normal situations, you must manually enter HTML codes in your CGI program, 
+  you can't use other WYSIWYG programs to design it. If you want to use a ready 
+  HTML file for response page, you must make some modify before you import it 
+  (Example: you must add Send() in each line, and change any double-quote symbols 
+  to two double quotes, like this: (&quot;) -&gt; (&quot;&quot;) ). So I designed 
+  this module to automatically convert any HTML file to CGI Workerman's code format. 
+  It will take a less time to edit response HTML files. Call it with two arguments: 
+  Source File and Destination File. It will read from source file, and put converted 
+  data to destination file, so the source file will not be modified. After convertion, 
+  you can import destinataion file you specified as program code. (copy/paste) 
+  It will auto convert any ASP-Like tag (&lt;% ... %&gt;) to normal VB program 
+  code, so you can edit entire page/program outside VB, convert it then compile 
+  it. Here is an Example page you can see how to make a page that compatible with 
+  this module. Anything inside (&lt;%...%&gt;) is treated as VB program code.</p>
+<p><font color="#804000">&lt;% Sub CGI_Main() %&gt;<br>
+  <font color="#408080">.....HTML head/title.....<br>
+  </font> &lt;% Select case param(&quot;action&quot;)<br>
+  case &quot;situation1&quot; %&gt;<br>
+  <font color="#408080">.....HTML codes for situation 1.....<br>
+  </font> &lt;% case &quot;addfile&quot; %&gt;<br>
+  <font color="#408080">.....HTML codes for situation 2.....<br>
+  </font> &lt;% case &quot;delfile&quot; %&gt;<br>
+  <font color="#408080">.....HTML codes for situation 3.....<br>
+  </font> &lt;% End Select %&gt;<br>
+  <font color="408080">.....HTML footer......<br>
+  </font> &lt;% End Sub %&gt;</font></p>
+<hr>
+<p>At the end of this document, I appreciate you to use my modules. These are 
+  all <b>FREEWARE, </b>You can send $10 support for this software if you like, 
+  but it's not needed. So feel free and enjoy it. For any suggestments or comments, 
+  please e-mail to: <i>Wei-dun Teng &lt;<a href="mailto:tiberius@ms13.url.com.tw">tiberius@ms13.url.com.tw</a>&gt;<br>
+  </i>If you like this software, please send a postcard to me. It's the power 
+  that let me make these software better and better! </p>
+<p><i><font color="#808000">Wei-dun Teng<br>
+  </font> </i> <font color="#000080">4F No. 14, Lane 165 Alley 25, Sec.3 of Kang-Ning 
+  Road.<br>
+  Taipei, Taiwan, Republic Of China.</font></p>
+</body>
+</html>

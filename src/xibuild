@@ -1,0 +1,120 @@
+#! /bin/sh
+#
+#  xibuild - XITAMI build script for UNIX
+#
+#  Written:  96/11/13  Pieter Hintjens <ph@imatix.com>
+#  Revised:  99/05/20  Pieter Hintjens <ph@imatix.com>
+#
+#  This script builds the SFL and SMT packages, then installs XITAMI ready
+#  for use.  XITAMI is installed in the current directory.
+
+TOPDIR=$PWD
+SRCDIR=$TOPDIR/src
+SFLDIR=$TOPDIR/src/sfl
+SMTDIR=$TOPDIR/src/smt
+WEBDIR=$TOPDIR/webpages
+CGIBIN=$TOPDIR/cgi-bin
+CGISRC=$TOPDIR/cgi-src
+
+#  First, check that things are as we expect them to be
+
+if test ! -d $SRCDIR; then
+    echo xibuild: XITAMI source directory \'$SRCDIR\' not found - aborting
+    exit 1;
+fi
+
+if test ! -d $SFLDIR; then
+    echo xibuild: SFL source directory \'$SFLDIR\' not found - aborting
+    exit 1;
+fi
+
+if test ! -d $SMTDIR; then
+    echo xibuild: SMT source directory \'$SMTDIR\' not found - aborting
+    exit 1;
+fi
+
+if test ! -d $WEBDIR; then
+    echo xibuild: Web pages directory \'$WEBDIR\' not found - aborting
+    exit 1;
+fi
+
+if test ! -d $CGISRC; then
+    echo xibuild: CGI source directory \'$CGISRC\' not found - aborting
+    exit 1;
+fi
+
+#  Say hello
+
+chmod +x $SFLDIR/c
+SYSTEM=`$SFLDIR/c -S`
+COMPILE=`$SFLDIR/c -C`
+
+echo "--------------------------------------------------------------------"
+echo "Welcome to the Xitami web server, copyright (c) 1991-99 iMatix."
+echo "This script will compile and link XITAMI, ready for use on this"
+echo "$SYSTEM system.  Nothing is installed in any system directories." 
+echo "Please confirm this information:"
+echo "    System . . . . . .: $SYSTEM"
+echo "    ANSI C compiler. .: $COMPILE"
+echo ""
+echo "If the ANSI C compile command is wrong, you will have to modify the"
+echo "'c' scripts in these directories:"
+echo "    $SFLDIR, $SMTDIR"
+echo ""
+echo "If this information looks okay, press [Enter] to build Xitami."
+echo "--------------------------------------------------------------------"
+read pause
+
+#  Now, rebuild the SFL package
+
+echo xibuild: Rebuilding the SFL package...
+cd $SFLDIR
+chmod +x build
+echo | ./build
+if test $? -ne 0; then
+    echo xibuild: error during compile of SFL - aborted
+    exit 1
+fi
+cd $TOPDIR
+
+#  Assuming that went okay, rebuild the SMT package
+echo xibuild: Rebuilding the SMT package...
+cd $SMTDIR
+cp $SFLDIR/libsfl.a .
+cp $SFLDIR/sfl.h .
+chmod +x build
+echo | ./build
+if test $? -ne 0; then
+    echo xibuild: error during compile of SMT - aborted
+    exit 1
+fi
+cd $TOPDIR
+
+#  Assuming that went okay, rebuild the CGI programs
+
+cd $CGISRC
+cp $SFLDIR/libsfl.a .
+cp $SFLDIR/sfl.h    .
+cp $SFLDIR/c        .
+./c -l testcgi*.c
+if test $? -ne 0; then
+    echo xibuild: error during compile of testcgi - aborted
+    exit 1
+fi
+cd $TOPDIR
+
+#  Install XITAMI in its own directory
+echo xibuild: Installing XITAMI files...
+test ! -d $CGIBIN && mkdir $CGIBIN
+cp $SMTDIR/xitami   .
+cp $CGISRC/testcgi  $CGIBIN
+cp $CGISRC/testcgi? $CGIBIN
+
+chmod +x xiconfig
+test ! -f defaults.cfg && ./xiconfig
+
+echo ""
+echo "xibuild completed.  Please see 'readme' file for info on using"
+echo "Xitami.  The Xitami web pages are the main source of information."
+echo "You can run Xitami now by typing 'xitami' or 'xitami -b 5000'."
+echo "browser and the URL http://hostname or http://hostname:5080."

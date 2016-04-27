@@ -1,0 +1,575 @@
+/*  ----------------------------------------------------------------<Prolog>-
+    Name:       sflprocu.imp
+    Title:      process_create_full -- OS/2 implementation
+    Package:    Standard Function Library (SFL)
+
+    Written:    98/10/15  iMatix SFL project team <sfl@imatix.com>
+    Revised:    98/10/23
+
+    Copyright:  Copyright (c) 1991-99 iMatix Corporation
+    License:    This is free software; you can redistribute it and/or modify
+                it under the terms of the SFL License Agreement as provided
+                in the file LICENSE.TXT.  This software is distributed in
+                the hope that it will be useful, but without any warranty.
+ ------------------------------------------------------------------</Prolog>-*/
+
+/*  OS/2 Implementation of the SFL process_create_full() function            */
+/*  This function receives input in the form of a pointer to a PROC_DATA     */
+/*  structure called procinfo.  See sflproc.c for details.                   */
+
+/*  TODO: Possibly the OS/2 version should handle argv==NULL, useshell==TRUE */
+/*  in the same manner as the unix version, ie not parse filename.           */
+
+    int
+        process = 0,                    /*  Process number                   */
+        runmode = P_NOWAIT;             /*  Spawn mode                       */
+    HANDLE
+        old_stdin  = NULL_HANDLE,       /*  Dup'd handle for old stdin       */
+        old_stdout = NULL_HANDLE,       /*  Dup'd handle for old stdout      */
+        old_stderr = NULL_HANDLE;       /*  Dup'd handle for old stderr      */
+    Bool
+        didredirection = FALSE,         /*  True if we got redirected        */
+        parsedargs = FALSE,             /*  argv() points at token array     */
+        dofreeargv = FALSE,             /*  argv() points at handbuilt array */
+        freeenv    = FALSE;             /*  True if we should free envv      */
+    const char
+        *path      = procinfo-> path,   /*  Path to search                   */
+        *filename_only = NULL;          /*  Filename, without arguments      */
+    char
+        *actual_command = NULL,         /*  Actual command string to run     */
+        *clean_filename = NULL,         /*  Unescaped filename               */
+        *full_filename = NULL,          /*  File to execute, with path       */
+        *curdir = NULL,                 /*  Current working directory        */
+        *strfree_this = NULL;           /*  strfree() this, if not NULL      */
+    char
+        **argv = procinfo-> argv,       /*  Arguments for program            */
+        **envv = procinfo-> envv;       /*  Environment for program          */
+    const char 
+        **searchext = procinfo-> searchext;  /*  Extensions to search        */
+
+    /*  NOTE: special care must be taken to ensure this code does not leak   */
+    /*  memory, as the memory will be leaked in the main process which       */
+    /*  potientally tries to run for a long period of time.  Token arrays    */
+    /*  have a lot of potiental for leaks if care is not taken.  To avoid    */
+    /*  these potiental problems, strings are copied a little more than      */
+    /*  otherwise would have been done, and then the original token arrays   */
+    /*  are freed.                                                           */
+
+    /*  First, check that minimum arguments needed to do something are set   */
+    ASSERT(procinfo);
+    ASSERT(procinfo-> filename);
+    if (! procinfo)
+        return NULL_PROCESS;
+
+    procinfo-> pid = NULL_PROCESS;
+    procinfo-> error = 0;
+    procinfo-> returncode = -1;
+
+    if (! (procinfo-> filename))
+      {
+        procinfo-> error = EINVAL;
+        return NULL_PROCESS;
+      }
+
+    /*  If argv[] array was not supplied, build it now from filename         */
+    /*  And pull out the name of the file that we want to run.               */
+    if (!argv)
+      { /*  Split off the arguments, and pick out the filename to use        */
+        argv = tok_split (procinfo-> filename);
+
+        if (!argv)
+          {
+            procinfo-> error = errno;
+            return NULL_PROCESS;
+          }
+
+        /*  The filename, and only the filename, is the 0th argument         */
+        filename_only = argv[0];
+
+        parsedargs = TRUE;              /* Yes, we split off the arguments   */
+      }
+    else
+      { /*  Already got our arguments, so the filename is just the filename  */
+        filename_only = procinfo-> filename;
+      }
+
+    /*  Substitute in the defaults for values not supplied                   */
+    if (!searchext)
+        searchext = default_ext;
+    if (!path)
+        path      = "PATH";
+
+    /*  Under OS/2, we accept the magic file headers "#!", and "'/'*!".      */
+    /*  We also special case running CMD scripts, so that we invoke the      */
+    /*  default command interpreter, with a "/c" parameter, and the script   */
+    /*  name (ie, they behave as if procinfo-> useshell == TRUE).  The magic */
+    /*  file headers are checked first so can be used to override the default*/
+    /*  command interpreter.                                                 */
+    /*                                                                       */
+    /*  Redirection returns either the filename and arguments to run, or     */
+    /*  NULL if the filename was not found at all.  If the filename was not  */
+    /*  found, but "procinfo-> useshell" is set, the process will still be   */
+    /*  created, otherwise an error will be returned.                        */
+
+    ASSERT(filename_only);
+
+    actual_command = 
+         redirect_exec_full (filename_only, 
+                             procinfo-> searchpath, 
+                             procinfo-> path,       
+                             searchext);
+
+    if (actual_command != NULL || procinfo-> useshell)
+      {
+        char **newargs = NULL;
+        int num_new = 0, num_existing = 0;
+        Bool free_newargs    = FALSE;
+        Bool have_used_shell = FALSE;
+
+        /*  Count the number of existing arguments (from above), should be   */
+        /*  at least 1.                                                      */
+        for (num_existing = 0; argv[num_existing] != NULL; num_existing++)
+            ;  /* EMPTY BODY */
+
+        ASSERT(num_existing >= 1);
+
+        /*  Now figure out what new arguments should be merged in, if any.   */
+        /*  If redirection took place, we can use it directly, otherwise     */
+        /*  we need to substitute in the reference to the shell now.         */
+        /*  Where redirection took place, and procinfo-> useshell is true    */
+        /*  this will be handled later.                                      */
+        if (actual_command != NULL)
+          {
+            newargs = tok_split (actual_command);  /*  Split off the args    */
+            didredirection = TRUE;                 /*  Assume redirected     */
+          }
+        else
+          { /*  NOTE: We cast away the const on filename_only here to keep   */
+            /*  the compiler happy.  It won't actually be changed by         */
+            /*  prefix_argv_with_shell(), but if we use (const char **) for  */
+            /*  the argument there we have to do more casting since the      */
+            /*  compiler won't prompt char ** -> const char ** :-(           */
+            char *fakeargv[2] = { NULL, NULL };
+            fakeargv[0]       = (char *)filename_only;
+            newargs = prefix_argv_with_shell (fakeargv, procinfo-> shell);
+            have_used_shell = TRUE;
+            free_newargs    = TRUE;            /*  Must free newargs later   */
+          }
+
+        if (! newargs)
+          { /*  Could not build new arguments array, abandon ship            */
+            if (parsedargs)
+                tok_free(argv);
+            procinfo-> error = EACCES;  /*  No permission to access file     */
+            return NULL_PROCESS;
+          }
+
+        actual_command  = newargs[0];
+
+        /*  Count the number of new arguments (should be at least 1)         */
+        /*  And while we are here, eliminate any double quotes around the    */
+        /*  arguments (especially the script name), since they'll only get   */
+        /*  in the way later.                                                */
+        for (num_new = 0; newargs[num_new] != NULL; num_new++)
+            if (*newargs[num_new] == '"')
+            {  char *pair = NULL;
+               pair = strrchr(newargs[num_new], '"');
+               if (pair != NULL)
+               {  *pair = '\0';                /* Eliminate the last "       */
+                  newargs[num_new]++;          /* Step over the first one    */
+               }
+            }
+
+        ASSERT(num_new >= 1);
+        if (num_new <= 1)
+            didredirection = FALSE;            /* No extra args -> not redir */
+
+        /*  Handle .CMD script files where the redirection wasn't done above */
+        /*  If redirection was done above we're either running a custom      */
+        /*  interpreter, or we are running a plain shell as we would here;   */
+        /*  in either case it should work without further intervention.      */
+
+        if (!didredirection)
+          { /*  Okay, it didn't expand there.  But possibly we have a CMD    */
+            /*  script and need to invoke the command processor.             */
+            /*  Find file extension; if not found, set to NULL               */
+            char *extension = strrchr (actual_command, '.');
+            if (extension == NULL
+            ||  strchr (extension, '/')         /*  Last '.' is part of path */
+            ||  strchr (extension, '\\'))       /*  => filename has no ext   */
+                extension = NULL;
+
+            if (extension != NULL && (lexcmp (extension, ".CMD") == 0))
+              { /* This is a CMD script, and we need to invoke the command   */
+                /* interpreter over it.                                      */
+                char **tmpargs  = NULL;
+                char *fakeargv[] = { NULL, NULL };
+                fakeargv[0]      = actual_command;
+                tmpargs = prefix_argv_with_shell (fakeargv, procinfo-> shell);
+
+                /*  Free the old arguments, and the old parse                */
+                ASSERT(! free_newargs);
+                tok_free(newargs);
+
+                if (! tmpargs)
+                  { /*  Could not redirect via the shell, must abandon ship  */
+                    if (parsedargs)
+                        tok_free(argv);
+                     procinfo-> error = EACCES;       /*  Cannot access file */
+                     return NULL_PROCESS;
+                  }
+
+                /*  Count the number of arguments we now have                */
+                for (num_new = 0; tmpargs[num_new] != NULL; num_new++)
+                     ;   /* EMPTY BODY */
+
+                /*  Now use that for our new arguments                       */
+                newargs = tmpargs;
+                actual_command  = newargs[0];
+                free_newargs    = TRUE;          /*  Must free newargs later */
+                have_used_shell = TRUE;
+                didredirection  = TRUE;
+              } /* extension is .cmd                                         */
+          } /*  only one new argument (filename to run)                      */
+
+        /*  Finally, if we are supposed to redirect via the shell, but we    */
+        /*  have not yet done so, then we should do that now.                */
+        if (procinfo-> useshell && (! have_used_shell))
+          { 
+            char **tmpargs = prefix_argv_with_shell (newargs, procinfo-> shell);
+            free_argv(newargs, (! free_newargs));
+
+            if (! tmpargs)
+            {  /*  Could not redirect via the shell, must abandon ship       */
+               if (parsedargs)
+                  tok_free(argv);
+               procinfo-> error = EACCES;   /*  No permission to access file */
+               return NULL_PROCESS;
+            }
+
+            /*  Count the number of new arguments                            */
+            for (num_new = 0; tmpargs[num_new] != NULL; num_new++)
+                 ;   /* EMPTY BODY */
+
+            /*  Now use that for our new arguments                           */
+            newargs         = tmpargs;
+            actual_command  = newargs[0];
+            free_newargs    = TRUE;          /*  Must free newargs later     */
+            have_used_shell = TRUE;
+          }
+
+        /* ----------------------------------------------------------------- */
+        /*  Now collect all the arguments together into one argv array       */
+
+        if (num_new >= 2 && num_existing >= 2)
+          { /*  Okay, we've got arguments to merge together, so we put the   */
+            /*  new ones first followed by the old ones.                     */
+            char **tmpargs;
+
+            ASSERT(newargs != NULL);
+
+            /*  Allocate space for the new arguments (at start), and the     */
+            /*  existing arumgnents (at end), and a terminator.              */
+            tmpargs = mem_alloc((num_new+num_existing+1) * sizeof(char *));
+            if (tmpargs != NULL)
+              { /*  Okay, copy all the arguments into place                  */
+                int i = 0;
+
+                for (i = 0; i < num_new; i++)
+                    tmpargs[i] = strdupl (newargs[i]);
+
+                /*  NOTE: We skip the first argument here, since it is the   */
+                /*  name of the script, and we've got one of those above.    */
+                /*  BUT we've got to put next arg in next position, hence -1 */
+
+                for (i = 1; i < num_existing; i++)
+                    tmpargs[num_new + i - 1] = strdupl (argv[i]);
+
+                /*  Terminate the array of arguments                         */
+                tmpargs[num_new + num_existing - 1] = NULL;
+
+                /*  Pick up a new pointer to the command to run              */
+                actual_command = tmpargs[0];
+
+                /*  Tidy up after ourselves                                  */
+                free_argv(newargs, (! free_newargs));
+                if (parsedargs)
+                  {
+                    tok_free(argv);
+                    parsedargs = FALSE;
+                  }
+
+                /*  Change pointer to point at the new (combined) arguments  */
+                argv = tmpargs;
+                dofreeargv = TRUE;
+              }
+            else
+              { /*  We couldn't allocate the new memory required             */
+                /*  Return failure.                                          */
+                tok_free(newargs);
+                if (parsedargs)
+                   tok_free(argv);
+                procinfo-> error = ENOMEM;
+                return NULL_PROCESS;
+              }
+          }
+        else if (num_new >= 2 && num_existing <= 1)
+          { /*  There were no arguments before, there are now.  Use new ones */
+            if (parsedargs)
+              {  /* We parsed the arguments, free up some of the memory      */
+                 tok_free(argv);
+                 parsedargs = FALSE;
+              }
+
+            argv = newargs;
+            if (free_newargs)               /* Make sure we free arguments   */
+                dofreeargv = TRUE;
+            else
+                parsedargs = TRUE;
+          }
+        else /* (num_new <= 1) */   /* num_existing is 1 or more             */
+          { /*  No expansion of the string, we just use the existing args    */
+            /*  But we do use the string as returned, because it may have    */
+            /*  an extension on it.                                          */
+            ASSERT(num_new <= 1);
+            ASSERT(num_existing >= 1);
+
+            /*  Copy the string as returned, so that we can use it below     */
+            /*  If the copy fails, we just go ahead with the existing command*/
+            strfree_this = strdupl (actual_command);
+            if (strfree_this != NULL)
+                actual_command = strfree_this;
+           
+            ASSERT(free_newargs == FALSE);
+            tok_free(newargs);
+          }
+      } /*  Redirection found a filename to run */
+    else
+      { /*  Redirection failed.  This means that it isn't executable, because*/
+        /*  we should either have got a full name back, or a command string  */
+        /*  to run.                                                          */
+
+        if (parsedargs)
+           tok_free(argv);
+        procinfo-> error = EACCES;      /*  No permission to access file     */
+        return NULL_PROCESS;
+      }
+
+    /*  Find the actual file we have to run.  If we're allowed to search     */
+    /*  the path, then we do that, otherwise we just look where we are.      */
+
+    /*  This is a good moment to unescape any spaces in the filename...      */
+    clean_filename = process_unesc (NULL, actual_command);
+    if (!clean_filename)
+      {
+        /*  Clear out the memory that we don't need any longer               */
+        if (parsedargs || dofreeargv)
+            free_argv(argv, parsedargs);
+        if (strfree_this != NULL)
+            strfree(&strfree_this);
+
+        procinfo-> error = errno;
+        return NULL_PROCESS; 
+      }
+
+    if ( ( didredirection && procinfo-> intsearch )
+    ||   (!didredirection && procinfo-> searchpath) )
+        full_filename = file_where_ext ('r', path, clean_filename, 
+                                        runnable_ext);
+    else
+        full_filename = file_where_ext ('r', NULL, clean_filename, 
+                                        runnable_ext);
+    mem_free (clean_filename);
+
+    if (full_filename == NULL ||
+        !file_is_executable (full_filename))
+      {
+        /*  Clear out the memory that we don't need any longer               */
+        if (parsedargs || dofreeargv)
+            free_argv(argv, parsedargs);
+        if (strfree_this != NULL)
+            strfree(&strfree_this);
+
+        if (full_filename == NULL)
+          procinfo-> error = ENOENT;    /*  No such file                     */
+        else
+          procinfo-> error = EACCES;    /*  No permission to access file     */
+        return NULL_PROCESS;            /*  Failed to open                   */
+      }
+
+    /*  Merge environment together if required                               */
+    /*  If env is supplied changes are merged into it, otherwise the changes */
+    /*  are merged into the current environment (environ).                   */
+    if (procinfo-> envadd != NULL || procinfo-> envrm != NULL)
+      {
+        if (envv != NULL)
+            envv = merge_environment (envv, procinfo-> envadd, procinfo-> envrm);
+        else 
+            envv = merge_environment (environ, procinfo-> envadd, 
+                                               procinfo-> envrm);
+
+        if (envv != NULL)
+            freeenv = TRUE;
+        else
+          {
+            procinfo-> error = errno; 
+
+            /*  Clear out the memory that we don't need any longer           */
+            if (parsedargs || dofreeargv)
+                free_argv(argv, parsedargs);
+            if (strfree_this != NULL)
+                strfree(&strfree_this);
+
+            return NULL_PROCESS;
+          }
+      }
+
+    /*  If requested, change to a different root directory, and/or work dir  */
+    if (procinfo-> rootdir || procinfo-> workdir)
+      {
+#if defined(__EMX__)
+        int rc = 0;
+
+        curdir = _getcwd2(NULL, 256);
+        if (!curdir)
+          { /*  Clear out the memory that we don't need any longer           */
+            procinfo-> error = errno;
+
+            if (parsedargs || dofreeargv)
+                free_argv(argv, parsedargs);
+            if (strfree_this != NULL)
+                strfree(&strfree_this);
+            if (envv != NULL && freeenv)
+                strtfree (envv);
+
+            return NULL_PROCESS;
+          }
+
+        if (procinfo-> rootdir)
+          rc = _chdir2 (procinfo-> rootdir);
+
+        if (procinfo-> workdir && rc == 0)
+          rc = chdir (procinfo-> workdir);
+
+        if (rc == -1)
+          { /* Error changing directories, need to abort now                 */ 
+            procinfo-> error = errno;
+
+            if (parsedargs || dofreeargv)
+                free_argv(argv, parsedargs);
+            if (strfree_this != NULL)
+                strfree(&strfree_this);
+            if (envv != NULL && freeenv)
+                strtfree (envv);
+
+            _chdir2(curdir);                /*  Try to restore existing dir  */
+
+            return NULL_PROCESS;
+          }
+#else
+#error Cannot save directory or change to new drive
+#endif
+      }
+    else
+        curdir = NULL;
+
+    /*  Redirect the IO file handles for stdin, stdout, stderr,              */
+    if (procinfo-> in != NULL_HANDLE)
+      old_stdin  = redirect_io_fh(procinfo-> in,  STDIN_FILENO);
+
+    if (procinfo-> out != NULL_HANDLE)
+      old_stdout = redirect_io_fh(procinfo-> out, STDOUT_FILENO);
+
+    if (procinfo-> err != NULL_HANDLE)
+      old_stderr = redirect_io_fh(procinfo-> err, STDERR_FILENO);
+
+    if (old_stdin == -2 || old_stdout == -2 || old_stderr == -2)
+      { /* An error redirecting one of the file handles; restore them all    */
+        /* and exit having failed our job.                                   */
+        procinfo-> error = errno;           /*  Try to save error code       */
+
+        restore_redirection(old_stdin, old_stdout, old_stderr);
+
+        /*  Clear out the memory that we don't need any longer               */
+        if (parsedargs || dofreeargv)
+            free_argv(argv, parsedargs);
+        if (strfree_this != NULL)
+           strfree(&strfree_this);
+        if (envv != NULL && freeenv)
+           strtfree (envv);
+
+        if (curdir)                      /*  If set, try to restore work dir */
+          {
+#if defined(__EMX__)
+            _chdir2(curdir);
+#else
+            chdir(curdir);
+#endif
+            free(curdir);
+          }
+
+        return NULL_PROCESS;
+      }
+
+#if defined(DEBUG)
+    {
+       char **arg = argv;
+       fprintf(stderr, "About to execute: \"%s\" ", full_filename);
+       while(*arg)
+       {
+         fprintf(stderr, "\"%s\" ", *arg);
+         ++arg;
+       }
+       fprintf(stderr, "\n");
+       fflush(stderr);
+    }
+#endif
+
+    /*  Spawn the new program, and pick up its process ID.                   */
+#if defined(__EMX__)
+    if (procinfo-> createdaemon)
+        runmode = P_DETACH;
+    else
+        runmode = P_NOWAIT;
+
+    if (envv)                           /*  If caller provided envv, use it  */
+        process = spawnve (runmode, full_filename, argv, envv);
+    else                                /*  Otherwise use the current values */
+        process = spawnv  (runmode, full_filename, argv);
+
+    procinfo-> pid = ((PROCESS)process);
+    if (process <= -1)
+        procinfo-> error = errno;       /*  Save error code, if any          */
+#else
+#error Do not know how to start your process  
+#endif
+
+    /*  Put things back the way they were before                             */
+    restore_redirection(old_stdin, old_stdout, old_stderr);
+    if (curdir != NULL)                 /*  If directory changed, restore it */
+      {
+#if defined(__EMX__)
+        _chdir2 (curdir);
+#else
+        chdir (curdir);
+#endif
+        free (curdir);
+      }
+
+    /*  Clear out the memory that we don't need any longer                   */
+    if (parsedargs || dofreeargv)
+        free_argv (argv, parsedargs);
+    if (strfree_this != NULL)
+        strfree (&strfree_this);
+    if (envv != NULL && freeenv)
+        strtfree (envv);
+
+    if (process <= -1)
+        return NULL_PROCESS;            /*  Error starting child process     */
+
+    if (procinfo-> wait)
+        procinfo-> returncode = waitpid (process, 0, 0);
+
+    return ((PROCESS) process);
+
+/*---------------------------------------------------------------------------*/

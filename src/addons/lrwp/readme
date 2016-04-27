@@ -1,0 +1,16 @@
+LRWP - Long Running Web Process Protocol
+By Robin P. Dunn, Total Control Software <robind@earthling.net>
+
+This directory contains sample LRWP peer applications, and a library called
+lrwplib for creating LRWP applications in C.  LRWP is supported by Xitami and
+is documented in the Xitami documentation.
+
+    testlrwp.py   Sample peer application, written in Python
+    testlrwp.c    Sample peer application, written in C
+    testlrwp.pl   Sample peer application, written in Perl
+    lrwplib.c/h   Library for creating LRWP applications in C
+    lrwplib.py    Library for creating LRWP applications in Python
+    lrwp.jav      LRWP peer class (Java, rename to *.jav)
+    lrwp.cla      LRWP peer class (Java, rename to *.class)
+
+Comments and feedback to Robin Dunn or Pieter Hintjens <ph@imatix.com>.

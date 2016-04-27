@@ -1,0 +1,375 @@
+SMT Quick Reference                                   Revised: 1996/12/14 PH
+
+------------------------------------------------------------------------------
+Global variables
+
+    int     smt_errno                       Set when API detects an error
+    char    *smt_errlist []                 Corresponding error messages
+    event_t _the_next_event                 May be set by thread code
+    event_t _the_external_event             Set by event_wait()
+    event_t _the_exception_event            May be set by thread code
+    Bool    _exception_raised               May be set by thread code
+    Bool    _io_completed                   Last lazy I/O completed
+    Bool    _repeat_module                  Repeat current action module
+    Bool    signal_raised                   True after interrupt
+    Bool    shutdown_pending                When kill signal in progress
+    int     signal_value                    Value of signal
+
+------------------------------------------------------------------------------
+AGENT
+    AGENT  *next, *prev;                    Doubly-linked list
+    NODE    methods;                        Methods accepted by agent
+    NODE    queues;                         Queues defined for agent
+    char   *name;                           Agent's name
+    Bool    router;                         True if multi-thread/queue
+    int     priority;                       50=Low, 100=Normal, 200=High
+    long    max_threads;                    Max. permitted threads, or 0
+    long    cur_threads;                    Current number of threads
+    long    top_threads;                    Max. number threads we had
+    long    thread_tally;                   How many threads created
+    long    switch_tally;                   How many context switches
+
+------------------------------------------------------------------------------
+METHOD
+    METHOD *next, *prev;                    Doubly-linked list
+    AGENT  *agent;                          Parent agent descriptor
+    char   *name;                           Name of method
+    int     priority;                       50=Low, 100=Normal, 200=High
+    int     event_number;                   Internal event number
+
+------------------------------------------------------------------------------
+QID
+    long node;                              Location of queue (zero)
+    long ident;                             Queue ID number (1..n)
+
+------------------------------------------------------------------------------
+QUEUE
+    QUEUE  *next, *prev;                    Doubly-linked list
+    AGENT  *agent;                          Parent agent descriptor
+    NODE    events;                         Events in queue
+    NODE    threads;                        Threads for queue
+    QID     qid;                            Queue ID descriptor
+    int     max_events;                     Maximum allowed events
+    int     cur_events;                     Current number of events
+
+------------------------------------------------------------------------------
+EVENT
+    EVENT  *next, *prev;                    Doubly-linked list
+    QUEUE  *queue;                          Parent queue descriptor
+    QID     sender;                         Replies come back here
+    char   *name;                           Name of event
+    size_t  body_size;                      Size of event body in bytes
+    byte   *body;                           Event body
+    char   *accept_event;                   Reply if we accept event
+    char   *reject_event;                   Reply if we reject event
+    char   *expire_event;                   Reply if we expire event
+    time_t  timeout;                        Expires at this time (or 0)
+
+------------------------------------------------------------------------------
+THREAD Properties
+    THREAD  *next, *prev;                   Doubly-linked list
+    QUEUE   *queue;                         Parent queue descriptor
+    long     thread_id;                     Thread identifier number
+    char    *name;                          Name of thread
+    Bool     animate;                       Animate this thread
+    void    *tcb;                           Thread context block (TCB)
+    EVENT   *event;                         Last-received event
+
+------------------------------------------------------------------------------
+SEMAPH Properties
+    SEMAPH  *next, *prev;                   Doubly-linked list
+    char    *name;                          Name of semaphore
+
+------------------------------------------------------------------------------
+Function Prototypes
+
+int      smt_init           (void);
+int      smt_term           (void);
+int      smt_exec_full      (void);
+Bool     smt_exec_step      (void);
+Bool     smt_active         (void);
+void     smt_set_console    (QID *qid);
+void     smt_set_timer      (QID *qid);
+int      smt_atexit         (function exitfct);
+void     smt_shutdown       (void);
+AGENT   *agent_declare      (char *agent);
+AGENT   *agent_lookup       (char *agent);
+int      agent_destroy      (AGENT *agent);
+METHOD  *method_declare     (AGENT *agent, char *method, int nbr, int priority);
+METHOD  *method_lookup      (AGENT *agent, char *method);
+int      method_destroy     (METHOD *method);
+QUEUE   *queue_create       (AGENT *agent, int max_events);
+QUEUE   *queue_lookup       (QID *qid);
+int      queue_destroy      (QUEUE *queue);
+int      queue_flush        (QUEUE *queue);
+int      event_send         (QID *to, QID *from, char *name, byte *body,
+                             size_t body_size, char *accept, char *reject,
+                             char *expire, word timeout);
+EVENT   *event_accept       (QUEUE *queue, EVENT *event);
+int      event_reject       (QUEUE *queue, EVENT *event);
+int      event_expire       (QUEUE *queue, EVENT *event);
+int      event_discard      (QUEUE *queue, EVENT *event);
+EVENT   *event_iterate      (QUEUE *queue, EVENT *event);
+int      event_destroy      (EVENT *event);
+void     event_wait         (void);
+THREAD  *thread_create      (char *agent, char *thread);
+THREAD  *thread_lookup      (char *agent, char *thread);
+int      thread_destroy     (THREAD *thread, Bool cleanup);
+SEMAPH  *semaph_create      (char *name, int value);
+SEMAPH  *semaph_lookup      (char *name);
+int      semaph_destroy     (SEMAPH *semaph);
+int      semaph_wait        (SEMAPH *semaph);
+int      semaph_signal      (SEMAPH *semaph);
+int      lazy_creat         (char *path, int mode);
+int      lazy_open          (char *path, int flags);
+int      lazy_read          (int handle, char *buffer, size_t count);
+int      lazy_write         (int handle, char *buffer, size_t count);
+int      lazy_close         (int handle);
+int      senderr            (QID *to_queue);
+int      sendfmt            (QID *to_queue, char *name, char *format,...);
+void     raise_exception    (event_t event);
+void     recycle_module     (Bool wanted);
+
+#define  SEND(q,name,s)     event_send ((q), NULL, (name), (byte *) (s), \
+                                        strlen(s) + 1, NULL, NULL, NULL, 0)
+
+------------------------------------------------------------------------------
+Constants
+
+    Possible values for smt_errno
+    SMT_NOERRORS            0               No errors
+    SMT_EVENTEXISTS         1               Event already declared
+    SMT_INTERNALERROR       2               Agent had internal error
+    SMT_METHODEXISTS        3               Method already declared
+    SMT_NOSUCHEVENT         4               Unknown event name
+    SMT_NOSUCHMETHOD        5               Unknown method name
+    SMT_NOSUCHQUEUE         6               Event queue not defined
+    SMT_NOSUCHSEMAPH        7               Unknown semaphore name
+    SMT_NOSUCHAGENT         8               Agent not defined
+    SMT_NOSUCHTHREAD        9               Thread not declared
+    SMT_NOTREADY            10              SMT API not initialised
+    SMT_OUTOFMEMORY         11              Not enough heap memory left
+    SMT_QUEUEISEMPTY        12              Event queue is empty
+    SMT_QUEUEISFULL         13              Event queue is full
+    SMT_SEMAPHEXISTS        14              Semaphore already exists
+    SMT_AGENTEXISTS         15              Agent already declared
+    SMT_AGENTNOTREADY       16              Agent not initialised
+    SMT_THREADEXISTS        17              Thread already declared
+    SMT_TOOMANYTHREADS      18              Too many threads
+
+    Values for priority arguments
+    SMT_PRIORITY_NULL       0               Illegal (null) priority
+    SMT_PRIORITY_MIN        1               Lowest priority
+    SMT_PRIORITY_LOW        50              Low priority
+    SMT_PRIORITY_NORMAL     100             Default priority
+    SMT_PRIORITY_HIGH       200             High priority
+    SMT_PRIORITY_MAX        255             Highest priority
+
+    Values for agent_declare () type argument
+    SMT_AGENT_NORMAL        0               1 queue for 1 thread
+    SMT_AGENT_ROUTER        1               1 queue for n threads
+
+    Event constants
+    SMT_NULL_EVENT          -2              No event for method
+
+------------------------------------------------------------------------------
+    SMTLOG - Logging Agent
+        One thread per log file; create thread with log file name, or supply
+        log file name in CYCLE, OPEN, APPEND events.  Filename "" or "NULL"
+        means discard all log file output.  Errors are sent to SMTOPER.
+
+    Method:                         Body:           Replies:
+    CYCLE    Cycle log file         [file name]     -
+    OPEN     Open new log file      [file name]     -
+    APPEND   Append to existing     [file name]     -
+    PUT      Write line to log      Line of text    -
+    PLAIN    Do not timestamp log   -               -
+    STAMP    Timestamp each line    -               -
+    CLOSE    Close log file         -               -
+
+    SMT_LOGGING             "smtlog"        Name of logging agent
+    int smtlog_init         (void);         Logging agent
+
+------------------------------------------------------------------------------
+    SMTOPER - Operator Console Agent
+        Single unnamed thread created automatically when agent initialises.
+        Send messages to console device or log file if specified.
+
+    Method:                         Body:             Replies:
+    ERROR    Error message          Message           -
+    WARNING  Warning message        Message           -
+    INFO     Information message    Message           -
+    LOG      Redirect to log file   SMTLOG thread name  -
+
+    SMT_OPERATOR            "smtoper"       Name of operator agent
+    int smtoper_init        (void);         Operator agent
+
+------------------------------------------------------------------------------
+    SMTTIME - Timer Agent
+        Single unnamed thread created automatically when agent initialises.
+        Accurate to 1/100th second.
+
+    Method:                         Body:             Replies:
+    ALARM    Alarm after delay      SMT_TIME_ALARM    TIME_ALARM, TIME_ERROR
+    WAKEUP   Alarm at some time     SMT_TIME_ALARM    TIME_ALARM, TIME_ERROR
+    CLOCK    Alarm at intervals     SMT_TIME_CLOCK    TIME_ALARM, TIME_ERROR
+
+    Replies:                                    Body:
+    TIME_ALARM      Alarm went off              SMT_TIME_REPLY
+    TIME_ERROR      Insufficient memory         Error message
+
+    SMT_TIMER               "smttime"       Name of timer agent
+    int smttime_init        (void);         Timer agent
+
+    SMT_TIME_ALARM          "qqmM"
+    q=time/delay in days
+    q=time/delay in 1/100th seconds
+    mM=user-defined data block, returned with reply event
+
+    SMT_TIME_CLOCK          "qqwmM"
+    q=delay in days
+    q=delay in 1/100th seconds
+    w=number of times to cycle - zero means forever
+    mM=user-defined data block, returned with reply event
+
+    SMT_TIME_REPLY          "mM"
+    mM=user-defined data block, returned with reply event
+
+------------------------------------------------------------------------------
+    SMTSLOT - Time Slot Agent
+        One thread per application; create thread with application name.
+        Send SPECIFY events, then ON or OFF to set timer initial state.
+        Specification is "name values..."; name is "mon" to "sun", or date
+        in MM/DD, YY/MM/DD, or YYYY/MM/DD format.  Values are hh:mm[-hh:mm]
+        in 24-hour clock format, delimited by spaces.
+
+    Method:                         Body:             Replies:
+    SPECIFY  Specify time slot      Specification     SLOT_ERROR, if error
+    ON       Error message          -                 SWITCH_ON, SWITCH_OFF
+    OFF      Error message          -                 SWITCH_ON, SWITCH_OFF
+
+    SMT_SLOT                "smtslot"       Name of time slot agent
+    int smtslot_init        (void);         Time slot agent
+
+    SMT_SLOT_SPEC           "s"
+    s=day of week, mm/dd, or yy/mm/dd followed by 1 or more time specs
+
+------------------------------------------------------------------------------
+    SMTSOCK - Socket I/O Agent
+        Single unnamed thread created automatically when agent initialises.
+        Multiple writes are processed in order; multiple reads are collapsed.
+
+    Method:                         Body:             Replies:
+    READ     Read socket data       SMT_SOCK_READ     SOCK_READ_OK,...
+    READR    Read, repeat for ever  SMT_SOCK_READ     SOCK_READ_OK,...
+    WRITE    Write socket data      SMT_SOCK_WRITE    SOCK_WRITE_OK,...
+    INPUT    Wait for input         SMT_SOCK_INPUT    SOCK_INPUT_OK,...
+    INPUTR   Wait input, repeat     SMT_SOCK_INPUT    SOCK_INPUT_OK,...
+    OUTPUT   Wait for output        SMT_SOCK_OUTPUT   SOCK_OUTPUT_OK,...
+    CONNECT  Connect to host        SMT_SOCK_CONNECT  SOCK_WRITE_OK,...
+    FLUSH    Flush requests         SMT_SOCK_FLUSH    -
+
+    Replies:                                    Body:
+    SOCK_READ_OK    Data read okay              SMT_SOCK_READ_OK
+    SOCK_WRITE_OK   Data written okay           SMT_SOCK_OK
+    SOCK_INPUT_OK   Socket has input ready      SMT_SOCK_OK
+    SOCK_OUTPUT_OK  Socket ready for output     SMT_SOCK_OK
+    SOCK_CLOSED     Socket was closed           SMT_SOCK_READ_OK
+    SOCK_TIMEOUT    Request timed-out           SMT_SOCK_READ_OK
+    SOCK_ERROR      Socket error during read    SMT_SOCK_ERROR
+
+    SMT_SOCKET              "smtsock"       Name of socket i/o agent
+    int smtsock_init        (void);         Socket i/o agent
+    void smtsock_trace      (Bool trace);   Socket i/o agent trace on/off
+
+    SMT_SOCK_READ           "dqddq"
+    d=timeout, in seconds - zero means no timeout
+    q=socket to read from
+    d=size of receiving buffer
+    d=minimum amount of data to read, 1 - buffer size; zero = all
+    q=user-defined request tag
+
+    SMT_SOCK_WRITE          "dqmMq"
+    d=timeout, in seconds - zero means no timeout
+    q=socket to write to
+    mM=block of memory to write to the socket
+    q=user-defined request tag
+
+    SMT_SOCK_INPUT          "dqq"
+    d=timeout, in seconds - zero means no timeout
+    q=socket to wait on
+    q=user-defined request tag
+
+    SMT_SOCK_OUTPUT         "dqq"
+    d=timeout, in seconds - zero means no timeout
+    q=socket to wait on
+    q=user-defined request tag
+
+    SMT_SOCK_CONNECT        "dsssdqq"
+    d=timeout, in seconds - zero means no timeout
+    s=type, UDP or TCP
+    s=host, specified as name or dotted address, or NULL
+    s=service, as name or port number in ASCII, or NULL
+    d=16-bit host port, or 0
+    q=32-bit host address, or 0  -- one of these pairs is required
+    q=user-defined request tag
+
+    SMT_SOCK_FLUSH          "q"
+    q=socket to flush requests for
+
+    SMT_SOCK_READ_OK        "dqmMq"
+    d=timeout, in seconds, from read request
+    q=socket specified for i/o
+    mM=block of memory
+    q=user-defined request tag
+
+    SMT_SOCK_OK             "qq"
+    q=socket specified for i/o, or new connected socket
+    q=user-defined request tag
+
+    SMT_SOCK_ERROR          "sqq"
+    s=error message
+    q=socket specified for i/o, or new connected socket
+    q=user-defined request tag
+
+------------------------------------------------------------------------------
+    SMTTRAN - Transfer Agent
+        Single unnamed thread created automatically when agent initialises.
+        Transfers fixed-size blocks or complete files.
+
+    Method:                         Body:             Replies:
+    PUT_BLOCK   Write block         SMT_TRAN_PUTB     SMT_TRAN_PUTB_OK,...
+    GET_BLOCK   Read block          SMT_TRAN_GETB     SMT_TRAN_GETB_OK,...
+    PUT_FILE    Write file          SMT_TRAN_PUTF     SMT_TRAN_PUTF_OK,...
+    GET_FILE    Read file           SMT_TRAN_GETF     SMT_TRAN_GETF_OK,...
+    COMMIT      Finish transfers    -                 -
+
+    SMT_TRANSFER            "smttran"       Name of transfer agent
+    int smttran_init        (void);         TCP/IP transfer agent
+
+    SMT_TRAN_PUTB           "qmM"
+    q=socket for output
+    mM=block of data to transmit
+
+    SMT_TRAN_GETB           "q"
+    q=socket for input
+
+    SMT_TRAN_PUTF           "qs"
+    q=socket for output
+    s=name of file to send
+
+    SMT_TRAN_GETF           "qs"
+    q=socket for input
+    s=name of file to receive
+
+    SMT_TRAN_PUTB_OK        "d"
+    d=size of transmitted data
+
+    SMT_TRAN_GETB_OK        "mM"
+    mM=received block of data
+
+    SMT_TRAN_PUTF_OK        "q"
+    q=size of transmitted data
+
+    SMT_TRAN_GETF_OK        "q"
+    q=size of received data

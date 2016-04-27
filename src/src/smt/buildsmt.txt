@@ -1,0 +1,87 @@
+#
+#   Name:       buildsmt.txt
+#   Title:      Procedure to compile & link SMT kernel
+#   Package:    Libero SMT 2.x
+#
+#   Written:    96/09/24  Pieter Hintjens <ph@imatix.com>
+#   Revised:    99/11/14  Pieter Hintjens <ph@imatix.com>
+#
+#   Usage:      Use otto script to produce build scripts
+#
+#   Copyright:  Copyright (c) 1991-1996 iMatix
+#   License:    This is free software; you can redistribute it and/or modify
+#               it under the terms of the SMT License Agreement as provided
+#               in the file LICENSE.TXT.  This software is distributed in
+#               the hope that it will be useful, but without any warranty.
+#
+title iMatix SMT Package
+output $default
+
+echo Building the iMatix Simple Multi-Threading kernel (SMT)
+echo You must already have built the SFL package and installed the
+echo SFL library.  If not, Ctrl-C now and get your hands on the SFL.
+pause
+
+echo Checking for required files...
+require $LIB libsfl
+require smtlog.c   smtlog.l  smtlog.d  smtlog.i
+require smtecho.c  smtecho.l smtecho.d smtecho.i
+require smthttp.c  smthttp.l smthttp.d smthttp.i
+require smtoper.c  smtoper.l smtoper.d smtoper.i
+require smtsock.c  smtsock.l smtsock.d smtsock.i
+require smtslot.c  smtslot.l smtslot.d smtslot.i
+require smtsimu.c  smtsimu.l smtsimu.d smtsimu.i
+require smttime.c  smttime.l smttime.d smttime.i
+require smttran.c  smttran.l smttran.d smttran.i
+require smtupmc.c  smtupmc.l smtupmc.d smtupmc.i
+require smtupmd.c  smtupmd.l smtupmd.d smtupmd.i
+require smttst1.c  smttst1.l smttst1.d smttst1.i
+require smttst2.c  smttst2.l smttst2.d smttst2.i
+require smttst3.c  smttst3.l smttst3.d smttst3.i
+require smtftpc.c  smtftpc.l smtftpc.d smtftpc.i
+require smtftpd.c  smtftpd.l smtftpd.d smtftpd.i
+require smtrdns.c  smtrdns.l smtrdns.d smtrdns.i
+require smthlog.c  smthlog.l smthlog.d smthlog.i
+require smthttpl.c smthttpl.h
+require smtrdnsl.c smtrdnsl.h
+require smtmsg.c   smtmsg.h
+require smtsslm.c  smtsslm.h
+require smtlib.c   smtlib.h
+require smtftpl.c  smtftpl.h
+require xixlogm.c  xixlogm.h xixlog.h
+require xitami.c
+require xiadm00.c  formio.h
+require xiadmin.c  xiadmin.l xiadmin.d xiadmin.i
+require xierror.c  xierror.l xierror.d xierror.i
+require xilrwp.c   xilrwp.l  xilrwp.d  xilrwp.i
+require xixlog.c   xixlog.l  xixlog.d  xixlog.i
+require echocli.c  echod.c   tsttime.c tstslot.c tstrdns.c
+require xixlat.c
+require upmc.c upmd.c smtupm.h
+require sfl.h
+require xiadm01.h xiadm02.h xiadm03.h xiadm04.h xiadm05.h
+require xiadm06.h xiadm07.h xiadm08.h xiadm09.h xiadm10.h
+require xiadm11.h xiadm12.h xiadm13.h xiadm14.h xiadm15.h
+require xiadm16.h xiadm17.h xiadm18.h xiadm18.h xiadm19.h
+require xiadm20.h xiadm21.h xiadm22.h xiadm23.h xiadm24.h
+require xiadm25.h xiadm26.h
+
+#  These files are also part of the package
+require smtschm.c xitami.aut ftpusers.aut ftpdirs.aut xitami.cfg
+
+#  These programs go into the SMT library
+delete $lib libsmt
+library libsmt
+compile smtlog  smtmsg  smtecho smthttp smtoper smtsock
+compile smtslot smtsimu smtupmd smtupmc smttran smttime
+compile smtftpc smtftpd smtlib  smtrdns smthlog
+compile smthttpl smtftpl smtrdnsl smtsslm xixlogm
+compile xiadmin xiadm00 xierror xilrwp xixlog
+compile smttst1 smttst2 smttst3
+
+#  These are the main programs
+library
+compile xitami xixlat
+link    xitami xixlat
+compile echocli echod tsttime tstslot tstrdns upmc upmd
+link    echocli echod tsttime tstslot tstrdns upmc upmd

@@ -1,0 +1,295 @@
+#! /usr/local/bin/perl
+#
+#   Name:       xitest
+#   Title:      Xitami regression test tool
+#
+#   Written:    98/03/15  Xitami team <xitami@imatix.com>
+#   Revised:    98/11/23
+#
+#   Copyright:  Copyright (c) 1991-98 iMatix Corporation
+#   License:    This is free software; you can redistribute it and/or modify
+#               it under the terms of the Xitami License Agreement as provided
+#               in the file LICENSE.TXT.  This software is distributed in
+#               the hope that it will be useful, but without any warranty.
+#
+#   Syntax:     Windows: perl xitest < xitest.dat
+#               Unix:    chmod +x xitest; xitest < xitest.dat
+#
+
+require 5.002;
+use strict;
+use Socket;
+
+#   http_request
+#
+#   Make a HTTP request to a given server and port, and return the result
+#   of having done so.
+#
+#   Expects:
+
+sub http_request {
+    my ($request, $remote, $port, $sleep) = @_;
+    my ($iaddr, $paddr, $proto, $line);
+    my ($in_header);
+
+    #   Return arguments
+    my ($header,                        #   HTTP header, one or more lines
+        $content,                       #   HTTP body, should be text
+        $status_code,                   #   HTTP status code, e.g. 200
+        $status_text,                   #   HTTP status text
+        $content_length,                #   Content-Length: value, if any
+        $location);                     #   Location: value, if any
+
+    if (!defined ($request)) {
+        warn "http_request: no request to perform!\n";
+        return undef;
+    }
+    $remote = "localhost"  if (!defined ($remote));
+    $port   = "80"         if (!defined ($port));
+    $sleep  =  0           if (!defined ($sleep));
+
+    if (!($iaddr = inet_aton ($remote))) {
+        warn "http_request: no such host: $remote\n";
+        return undef;
+    }
+    $paddr = sockaddr_in ($port, $iaddr);
+    $proto = getprotobyname ('tcp');
+    if (!socket (SOCK, PF_INET, SOCK_STREAM, $proto)) {
+        warn "[$remote:$port] socket: $!";
+        return undef;
+    }
+    if (!connect (SOCK, $paddr)) {
+        warn "[$remote:$port] connect: $!";
+        return undef;
+    }
+    send SOCK, "$request\n", 0;
+
+    $header         = "";
+    $content        = "";
+    $status_code    = 0;
+    $status_text    = "";
+    $content_length = "";
+    $location       = "";
+
+    $in_header      = 1;
+    while (<SOCK>) {
+        #   Collect line in header or body, delimited by a blank line
+        if ($in_header && /^\r\n/) {
+            $in_header = 0;
+        }
+        elsif ($in_header) {
+            $header .= $_;
+        }
+        else {
+            $content .= $_;
+        }
+
+        if (/^HTTP\/1.\d+ (\d+)\s+(.*)\r\n/) {
+            $status_code = $1;
+            $status_text = $2;
+        }
+        elsif (/^Content-Length: /i) {
+            $content_length = $';
+        }
+        elsif (/^Location: /i) {
+            $location = $';
+        }
+    }
+    sleep $sleep if $sleep;
+    close (SOCK);
+    return ($header,
+            $content,
+            $status_code,
+            $status_text,
+            $content_length,
+            $location);
+}
+
+
+#---------------------------------------------------------------------------
+#   Read in the tests to perform, from the named input file (or stdin)
+#
+#   Tests are stored as references to anonymous hashes, which contain
+#   "Method", "URI", "HeaderLines", "RC", "CompareFile", "CompareRegex",
+#   "Description".
+#
+#   "Server" and "Port" are also used, but persist from one setting to
+#   the next.
+
+my @TESTS;
+
+my ($method, $URI, $headerlines, $rc, $comparefile, $compareregex,
+    $description, $eof, $repeat);
+my ($server, $port, $sleep) = ("localhost", 80, 0);
+
+for (;;) {
+    $eof = 1
+        unless ($_ = <>);
+
+    next if (/^\s*#/);                  #   Ignore comment lines
+    chomp;
+
+    #   Handle joining lines
+    while (/\\$/) {
+        chop;
+        $_ .= <>;
+        chomp;
+    }
+    if    (/^UR[IL]=(.*)$/i) {
+       $URI          = $1;
+    }
+    elsif (/^Method=(.*)$/i) {
+       $method       = $1;
+    }
+    elsif (/^RC=(.*)$/i) {
+       $rc           = $1;
+    }
+    elsif (/^CompareFile=(.*)$/i) {
+        $comparefile  = $1;
+    }
+    elsif (/^CompareRegex=(.*)$/i) {
+        $compareregex = $1;
+    }
+    elsif (/^Description=(.*)$/i) {
+        $description  = $1;
+    }
+    elsif (/^Server=(.*)$/i) {
+        $server       = $1;
+    }
+    elsif (/^Port=(.*)$/i) {
+        $port         = $1;
+    }
+    elsif (/^Sleep=(.*)$/i) {
+        $sleep        = $1;
+    }
+    elsif (/^HeaderLine=(.*)$/i) {
+       $headerlines   = (defined($headerlines) ? $headerlines : "") .
+                      $1 . "\n";
+    }
+    elsif (/^Repeat=(.*)$/i) {
+        $repeat       = $1;
+    }
+    elsif (/^\s*$/) {
+        #   A blank line terminates the request.  Valid if URI and RC are
+        #   defined.  If one is defined, but not either, then rejected; if
+        #   neither defined then ignored (eg, stray blank line).
+        #
+        if (!defined ($URI) && !defined ($rc)) {
+            #   Stray blank line
+        }
+        elsif (!defined ($URI) || !defined ($rc)) {
+            # Invalid: only one of them defined (both undef is rejected above)
+            #
+            $URI = "" if (!defined ($URI));
+            $rc  = "" if (!defined ($rc));
+            warn "Invalid request: $URI -> $rc\n";
+        }
+        else {
+            # Valid request: have the two main components,
+            # URI, and result expected
+            #
+            $headerlines = "" if (!defined ($headerlines));
+            $repeat      = 1  if (!defined ($repeat));
+
+            push (@TESTS, { 'Method'       => (defined ($method)
+                                               ? $method
+                                               : "GET"),
+                            'URI'          => $URI,
+                            'RC'           => $rc,
+                            'HeaderLines'  => $headerlines,
+                            'CompareFile'  => $comparefile,
+                            'CompareRegex' => $compareregex,
+                            'Description'  => $description,
+                            'Repeat'       => $repeat,
+                            'Server'       => $server,
+                            'Port'         => $port });
+        }
+
+        # Clear out the per-entry settings.
+        undef $method;
+        undef $URI;
+        undef $rc;
+        undef $headerlines;
+        undef $comparefile;
+        undef $compareregex;
+        undef $description;
+        undef $repeat;
+    }
+    else {
+        warn "Invalid specification: $_\n";
+    }
+    last if $eof;
+}
+
+
+#---------------------------------------------------------------------------
+#   Now walk through the list of tests, and perform them.  (Not done
+#   interactively to ease entering some of the tests straight into
+#   stdin, eg from another program.)
+
+my ($testref);
+
+printf "%-40s %s\n", "Regression Tests", scalar localtime ();
+print  "-" x 75, "\n";
+open (ERRLOG, ">>xitest.log") || die "Can't write to xitest.log: $!";
+
+foreach $testref (@TESTS) {
+    #
+    #   Assemble the request -- all these values are definitely defined.
+    #   We put a space after the method only if it has a non-zero length,
+    #   so that we can test badly misformed URLs.
+    #
+    my ($repeat) = ${$testref}{'Repeat'};
+    while ($repeat--) {
+        my ($request) = ${$testref}{'Method'} .
+                       (${$testref}{'Method'} ne "" ? " " : "") .
+                        ${$testref}{'URI'} . " HTTP/1.0\n" .
+                        ${$testref}{'HeaderLines'};
+        my ($header,
+            $content,
+            $status_code,
+            $status_text,
+            $content_length,
+            $location) = http_request ($request, $server, $port, $sleep);
+
+        my ($description)  = ${$testref}{'Description'};
+        my ($compareregex) = ${$testref}{'CompareRegex'};
+        my ($comparefile)  = ${$testref}{'CompareFile'};
+
+        #   Format comment from Description or from URL
+        my ($comment) = $description;
+        if (defined ($description)) {
+            $comment = $description;
+        }
+        else {
+            $comment = ${$testref}{'Method'} .
+                      (${$testref}{'Method'} ne "" ? " " : "") .
+                       ${$testref}{'URI'};
+        }
+        substr ($comment, 36) = "..." if (length ($comment) > 39);
+
+        if (defined ($status_code)) {
+            printf ("%-40s -> %s", $comment, $status_code);
+
+            #   Check that it worked -- check the status code, then if that's
+            #   okay, check the compareregex and/or comparefile.
+            #
+            if ($status_code == ${$testref}{'RC'}) {
+                #
+                #   compareregex and comparefile not yet implemented
+                #
+                print "  Pass.\n";
+            }
+            else {
+                print "  $status_text; expected ${$testref}{'RC'}\n";
+                print ERRLOG "$comment -> $status_code, expected ".
+                      "${$testref}{'RC'}\n";
+            }
+        }
+        else {
+            printf ("%-40s -> %s", $comment, "Unable to test\n");
+        }
+    }
+}
+
+1;

@@ -1,0 +1,1003 @@
+<HTML><HEAD><!--Revised: 1 Apr, 2000 By: iMatix Corporation-->
+<TITLE>Configuration</TITLE></HEAD>
+<BODY BGCOLOR="#87CEFA">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A href="http://www.imatix.com/">iMatix home page</A><BR>
+ | <A HREF="index.htm"> Xitami home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="index3.htm">&lt;</A>
+ | <A href="index5.htm">&gt;</A> | <A href="license.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="/images/xitami1.gif" ALT="Xitami" WIDTH=100 HEIGHT=75 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=4><B>Xitami</B><BR><FONT SIZE=2>Version 2.4d7
+</TABLE>
+<HR>
+
+<H2><A NAME="TOC27">Configuration</A></H2>
+
+<P>Xitami will run straight out of the box with no configuration. However,
+advanced users may want to modify Xitami's behaviour with respect to
+security, CGI, logging, etc. Xitami reads a configuration file,
+<EM>xitami.cfg</EM> to get information such as the logfile name and MIME
+types. This is how the configuration files work:
+<UL>
+<LI>If no configuration file is present, Xitami will use internal defaults
+for most values, including some basic MIME types. However a fuller list of
+MIME types can come only from the config file.
+<LI>The configuration file must be in the current directory, or on the PATH.
+<LI>You can either modify the xitami.cfg file directly (not recommended) or
+create a second file, <EM>defaults.cfg</EM>, and place modified values
+there. This is an example of a defaults.cfg file:
+<PRE>[Server]
+    debug=1
+</PRE>
+<LI>The name 'defaults.cfg' can itself be modified in xitami.cfg.
+<LI>Since the defaults.cfg file is not included in the Xitami distribution,
+you will no longer lose customised configurations when you re-install the
+web server.
+<LI>If you change the defaults.cfg file it will be automatically reloaded by
+the server after a short delay (usually 60 seconds). If you did not create
+defaults.cfg, Xitami will auto-reload the xitami.cfg file.
+<LI>Any command-line options (or control panel options for the GUI versions
+of Xitami) <EM>override</EM> the options set in the configuration files.
+</UL>
+
+<P>In this document, configuration options are specified using the notation
+<I>section:keyword</I>, for instance 'server:debug=1' for the file example
+above.
+
+<H3><A NAME="TOC28">Web-Based Administration (WBA) Interface</A></H3>
+
+<P>The URL '/admin' will launch the WBA. This URL is password protected so
+that it is inaccessible until you have specified a new password. To enable
+the WBA you should modify xitami.aut and set a password for the [/admin]
+URL. Note that xitami.aut is re-installed with each new version, so the
+better long-term approach is to define a [Security]filename= option in
+defaults.cfg.
+
+<P>The WBA can be used in conjunction with this HTML-based help text, as
+regards the various config options. At any time you can, of course, modify
+the config files by hand.
+
+<P>To disable the WBA, remove the xiadmin entry from the [WSX] section in
+the xitami.cfg and default.cfg files.
+
+<H3><A NAME="TOC29">Configuration File Syntax</A></H3>
+
+<P>A configuration file defines a series of sections, each containing
+options. Comments are indicated by '#' at any point in the line. Blank lines
+are ignored. Each option takes this form:
+<PRE><EM>name</EM>=<EM>value</EM></PRE>
+
+<P>The option <EM>name</EM> is case insensitive. You can put spaces around
+the '=' if wanted. The option <EM>value</EM> is case-sensitive and may be
+enclosed in double quotes if necessary. To specify an empty value, use "".
+For example: <PRE>form-prefix=""</PRE>
+
+<P>You can put references to environment variables in the configuration file
+values using this syntax: $(NAME). Note that the name must be in uppercase,
+and that such references cannot be embedded.
+
+<P>Prior to version 2.4, Xitami used "_" and "-" interchangeably in the
+config files; this is no longer the case, and Xitami uses "-" in all keys.
+
+<H3><A NAME="TOC30">The [Version] Section</A></H3>
+
+<P>This section defines the configuration file as valid for Xitami. You
+should not delete or modify this section.
+
+<H3><A NAME="TOC31">The [Server] Section</A></H3>
+
+<P>This section defines general parameters for the web server:
+
+<DL>
+<DT><TT><B>webpages</B></TT>
+<DD>Specifies the directory root where web pages are located.
+This can be an absolute directory or a relative directory.
+<DD>Default: webpages (a subdirectory of the server working directory)
+
+<DT><TT><B>cgi-bin</B></TT>
+<DD>Specifies the directory where CGI programs are located. This can be an
+absolute directory (starting with '/' or '\', if you prefer) or a relative
+directory (not starting with '/' or '\'). See the section on
+<A href="index5.htm#cgidir">CGI directories</A> for more details.
+<DD>Default: cgi-bin (a subdirectory of the server working directory)
+
+<DT><TT><B>cgi-url</B></TT>
+<DD>Specifies the string that Xitami uses to detect that a URL is
+to be treated as a CGI.  This value must start with '/', and can
+consist of one or more paths.  For instance: '/cgi', '/script',
+'/scripts/cgi'.  This string does not actually refer to a real disk
+directory; it is translated into a real filename using the cgi-bin
+option, and a heuristic - see <A href="index5.htm#cgidir">CGI directories</A>.
+<DD>Default: /cgi-bin.
+
+<DT><TT><B>refresh</B></TT>
+<DD>Specifies the delay in seconds between each server refresh.
+At each refresh, the server does a number of administrative tasks:
+reload the configuration file if changed; reopen the file
+<TT>xitami.aut</TT> in any case; cycle the log files if necessary.
+The refresh rate has a minimum of 10 seconds, unless it is set to
+0 in which case no refresh occurs at all.  (This can be used to
+determine if the refresh is causing sporadic problems.)
+<DD>Default: 60 seconds
+
+<DT><TT><B>debug</B></TT>
+<DD>If 1, the server creates various debugging log files. The file
+request.log contains every incoming request. The file 'debug.log' in
+particular logs the processing of the requests. The file 'header.log'
+contains every response sent back to the browser. Use this to debug a
+virtual host configuration that gives problems, or to determine the cause of
+a recurrent problem.
+<DD>Default:0 (zero)
+
+<DT><TT><B>debug-dir</B></TT>
+<DD>Specifies a directory for debug log files.
+Xitami interprets this value as an environment variable if possible,
+else as a literal directory name.  If you want it to refer only to a
+directory name, end it in '/'.
+<DD>Default: debug.
+
+<DT><TT><B>temp-dir</B></TT>
+<DD>Specifies a directory for temporary files. The server creates these to
+pass information to and from CGI programs, and if debugging is enabled, you
+may find that these accumulate.  Xitami interprets this value as an
+environment variable if possible, else as a literal directory name.  If
+you want it to refer only to a directory name, end it in '/'.
+<DD>Default: temp.
+
+<DT><TT><B>log-dir</B></TT>
+<DD>Specifies the directory for log files.  This option applies to all log
+files that Xitami creates, except debug log files.  You can leave this
+option empty, and specify a full path name for each log file: this allows
+you to put different log files where you like.
+<DD>Default: logs.
+
+<DT><TT><B>header-dir</B></TT>
+<DD>Specifies the directory for header files.  Header files contain custom
+HTTP headers, used for all files of some type.  For instance, you can ask
+Xitami to output the HTTP header 'Cache-Control: no-cache' for all files
+with the extension '.txt' by creating a file called 'header.txt' in this
+directory, and containing the HTTP header line.  Each header file matches
+all files with the same extension.
+<DD>Default: logs.
+
+<DT><TT><B>limit</B></TT>
+<DD>Specifies the maximum number of concurrent HTTP connections.  On
+systems that can handle lots of open sockets (e.g. Unix, OS/2, WinNT,
+Win98), you may want to set this high.  Xitami does not impose any
+fixed limit.  If you set this value to 0, it means 'no limit'.
+<DD>Default: 20 connections for Windows systems, no limit on others.
+
+<DT><TT><B>background</B></TT>
+<DD>If 1, the server runs as a background process, on operating
+systems that support this functionality.  If 0, the server runs
+as a foreground process.  Background processes are detached from
+their controlling terminal and must be halted by a system 'kill
+process' request.  Foreground processes send their output to the
+controlling terminal and can be halted by an interrupt key (e.g.
+Ctrl-C).  Currently, only implemented on UNIX systems.
+<DD>Default: 0 (foreground)
+
+<DT><TT><B>autostart</B></TT>
+<DD>If 1, the server will run even if it cannot open the HTTP port.
+It will retry every 5 seconds until you stop the server (which must
+be done manually if the HTTP service cannot start).  The autostart
+option applies both to the HTTP and the FTP service.  This option
+is useful for systems where the network is not initially active, but
+comes 'up' after some action (e.g. dialing-up).  Currently it is
+implemented only in the 32-bit Windows version of Xitami, partly for
+various boring technical reasons, but mostly because this is the only
+platform that actually needs it.
+<DD>Default: 0 (will halt if it cannot open its HTTP port).
+
+<DT><TT><B>recover</B></TT>
+<DD>If 1, the server will try to recover from fatal errors using an internal
+crash recovery system. This currently only works under Windows. When this
+option is 0, Xitami will show a fatal error message and (under Windows)
+allow the web administrator to continue. When this option is 1, Xitami will
+silently recover and continue working.
+<DD>Default: 0 (will halt and show a message).
+
+<DT><TT><B>dirsort</B></TT>
+<DD>Specifies the sort order for directory listings.  You can sort by
+file name, extension, size, or modification date/time using any combination
+of the letters 'n', 'x', 's', and 't'.  For instance, dirsort=xnt will sort
+by extension, then name, then time.  To sort in reverse order, use capital
+letters.  For instance to show the most recent files first, use dirsort=T.
+<DD>Default: n (sort by name).
+
+<DT><TT><B>advertize</B></TT>
+<DD>Specifies whether Xitami adds the line 'Powered by Xitami' at the end
+of directory listings.
+<DD>Default: 1
+
+<DT><TT><B>keep-alive</B></TT>
+<DD>If 1, Xitami will allow browsers that support the Keep-Alive
+protocol to carry-out multiple requests on a single connection.
+This can improve performance, especially on pages with very many
+small files.  If 0, the browser creates a new connection for
+each HTTP request.
+<DD>Default: 1
+
+<DT><TT><B>keep-alive-max</B></TT>
+<DD>A number greater than 1; Xitami will allow this many requests
+on an 'alive' connection before closing it.  Setting this to 1 has
+the same effect as setting keep-alive to 0.
+<DD>Default: 25
+
+<DT><TT><B>timeout</B></TT>
+<DD>A 'kept-alive' connection will last this long before Xitami closes
+it.  The timeout is specified in seconds.  You can actually put
+this value quite high if wanted: the cost of an open connection is
+low and does not degrade the server performance.  Anything more than
+a minute or so is probably not worth it.
+<DD>Default: 30 seconds
+
+<DT><TT><B>default<EM>n</EM></B></TT>
+<DD>Specifies the default files. Up to 32 default files can be specified.
+When the user specifies a URL without filename, the server searches the
+directory for the default files, in order, from default1 to default32, until
+a matching file is found or the default sequence ends.  Note that Xitami
+automatically looks for .html extensions if a .htm file is not found.
+<DD>Default: default1=index.htm default2=default.htm
+
+<DT><TT><B>cache-defaults</B></TT>
+<DD>Normally, defaults pages are cached like any other. This means that if
+the browser has already loaded the page, it will add a HTTP request header
+'If-Modified-Since'. Xitami uses this date to determine whether to send the
+page or not.  In most cases, it is appropriate to leave this option enabled.
+However, if you are developing several sites, you may find that the browser
+shows the default page from one site when you look at another.  You can
+clear the browser cache and reload, but this is usually pretty tiresome.
+So, disable this option, and Xitami will never cache defaults pages.
+
+<DT><TT><B>error-header</B></TT>
+<DD>Specifies the text used to preface an HTTP error message.  The
+text may either be HTML, or a filename prefaced by '@'.  If the text
+comes from a file, Xitami will re-read this file each time it sends
+an error response.
+<DD>Default: <TT>&lt;HTML&gt;&lt;TITLE&gt;Error&lt;/TITLE&gt;
+&lt;BODY&gt;&lt;H1&gt;&lt;B&gt;</TT>
+
+<DT><TT><B>error-footer</B></TT>
+<DD>Specifies the text used to end an HTTP error message.  The
+text may either be HTML, or a filename prefaced by '@'.  If the text
+comes from a file, Xitami will re-read this file each time it sends
+an error response.
+<DD>Default:<TT>&lt;/B&gt;&lt;/H1&gt;&lt;/BODY&gt;&lt;/HTML&gt;</TT>
+
+<DT><TT><B>text-xxx</B></TT>
+<DD>Specifies the text used for a specific HTTP error code. The text may
+either be HTML, or a filename prefaced by '@'. If the text comes from a
+file, Xitami will re-read this file each time it sends an error response.
+The text is always prefixed by the error header and suffixed by the error
+footer. You can use this for error codes 4xx and 5xx. 2xx codes are not
+errors, and 3xx codes are handled by the browser without displaying any text
+that the server might send. To test a specific error, you can use the
+special URL 'error?xxx'. For instance, to simulate a 402 error (Payment
+Required), use a URL like this: 'http://127.0.0.1/error?402'. You can
+simulate a 302 error (temporary redirection) using a URL like this:
+'http://127.0.0.1/error?302:/somedir/somepage.htm'. The error codes returned
+by Xitami are:
+<TABLE BORDER=1 WIDTH=80%>
+<TR><TD>200<TD>Ok
+<TR><TD>201<TD>Created
+<TR><TD>202<TD>Accepted
+<TR><TD>203<TD>Partial information
+<TR><TD>204<TD>No response
+<TR><TD>301<TD>Moved
+<TR><TD>302<TD>Found
+<TR><TD>303<TD>Method
+<TR><TD>304<TD>Not modified
+<TR><TD>400<TD>Bad request
+<TR><TD>401<TD>Unauthorized
+<TR><TD>402<TD>Payment required
+<TR><TD>403<TD>Forbidden
+<TR><TD>404<TD>Not found
+<TR><TD>412<TD>Precondition failed
+<TR><TD>413<TD>Request entity too large
+<TR><TD>500<TD>Internal error
+<TR><TD>501<TD>Not implemented
+<TR><TD>502<TD>Service temporarily overloaded
+</TABLE>
+<DD>Default:<TT>HTTP/1.0 XXX:</I>error text</I></TT>
+
+<DT><TT><B>priority</B></TT>
+<DD>Specifies the server priority, on systems where this is possible
+(currently only Windows NT and 95).  1=normal, 2=low, 3=high.  You can set
+the priority to 'low' for systems where the server should not interfere with
+other processes.  You can set the priority to 'high' for systems where the
+server is the main process.
+
+<DT><TT><B>ipaddress</B></TT>
+<DD>Specifies the IP address on which Xitami should open its HTTP
+connection. If this is 0, Xitami will open its connection on all available
+IP addresses. This is normally a Good Idea, since it makes configuration
+much simpler on a multihomed system, and is completely correct on a
+single-homed system (i.e. a system with just one IP address, which is pretty
+common). If you have multiple IP addresses and want to run Xitami on just
+one of these, you can specify it here using the standard dotted network
+address format. This will effectively disable IP-based virtual hosting.
+<DD>Default: 0 (take any available IP address).
+
+<DT><TT><B>portbase</B></TT>
+<DD>Defines the IP port base for the server.  Add 80 to this to
+calculate the actual port used for the HTTP service.  For
+example, to run the server on port 6080, define <EM>portbase</EM>
+as 6000.  We use a portbase in place of an absolute address so
+that multiple protocols (e.g. the FTP server embedded into Xitami)
+can be managed as one unit.
+<DD>Default: 0 (zero)
+
+<DT><TT><B>portbase<EM>n</EM></B></TT>
+<DD>Specifies one or more alternate portbases; if the primary HTTP port is
+unavailable, will try portbase1, portbase2, etc. until a free port is found,
+or no further alternate portbases are found.
+<DD>Default: no default.
+
+<DT><TT><B>base-host</B></TT>
+<DD>Specifies the name of the configuration file used for the base virtual
+host. You may need this option when you have virtual hosts that all inherit
+values from defaults.cfg, but where the base host needs different values.
+<DD>Default: basehost.cfg
+
+<DT><TT><B>hostname</B></TT>
+<DD>Specifies your fully-qualified domain name for the server. This name is
+used whenever the server needs to redirect a request (e.g. for image maps).
+You may want to provide this when configuring a virtual host. It is not
+usually necessary on single-hosted systems.
+<DD>Default: the system hostname.
+
+<DT><TT><B>defaults</B></TT>
+<DD>Specifies the name of the local configuration file. This file provides
+the defaults that are used for all virtual hosts. Anything in the defaults
+file overrides the contents of xitami.cfg.
+<DD>Default: defaults.cfg
+</DL>
+
+<H3><A NAME="TOC32">The [Alias] Section</A></H3>
+
+<P>This section lets you define multiple document roots. Each alias
+specifies a name and a path. For example:
+<PRE>[Alias]
+cdrom=G:\html
+private/pub=i:\pub
+private/doc=i:\docs\current
+</PRE>
+<P>The alias name may contain '/'. It is not case sensitive. In A URL, the
+alias comes at the start, e.g.:
+<PRE>http://127.0.0.1/cdrom/index.htm
+</PRE>
+<P>There is no fixed limit to the number of aliases you can define.
+However, if you define large numbers of aliases, Xitami will run slower.
+An alias can refer to a file, including extension.  In this case, the
+file will act as a default file for that alias.
+
+<H3><A NAME="TOC33">The [Virtual-Hosts] Section</A></H3>
+
+<P>This section lets you define virtual hosts.  A virtual host can
+be specified in two ways: by IP address (if your system has multiple
+IP addresses) or by name (if your system has multiple names).  Each
+entry in the [Virtual-Hosts] section defines one virtual host, like
+this:
+
+<PRE>[Virtual-Hosts]
+www.rnd.imatix.com=research.cfg
+253.112.23.51=home.cfg
+</PRE>
+
+<P>See the section on <A href="index8.htm#vhosts">virtual hosts</A> for more details.
+
+<H3><A NAME="TOC34">The [Filter] Section</A></H3>
+
+<P>This section is used to define filter programs.  Filters are
+programs that are run with the (usually) HTML file as input.  You
+can write filters in Perl, Awk, C, Rexx, or any other language that
+can handle standard input/output streams.  Filters are a little
+like CGI programs, except that they are invoked whenever a certain
+type of file is requested.
+
+<P>Each definition in this section consists of a file extension with a
+leading dot and a command. The command may be with a full path, or without,
+if the program is on the PATH. Xitami lets you run scripts directly under
+OS/2 and Windows 95/NT, if you respect the header conventions noted in the
+CGI section.
+
+<P>You can pass any type of input file to a filter program, with the
+restriction that it must be a text file. Binary files will probably not work
+under MS-DOS-like file systems. Under Unix there is no difference between
+text and binary files.
+
+<P>This is an example of the [Filter] section:
+<PRE>[Filter]
+    .ssi=perlssi        #  Pass *.ssi to the Perlssi filter
+</PRE>
+
+<H3><A NAME="TOC35">The [CGI] Section</A></H3>
+
+<P>This section controls the CGI protocol:
+
+<DL>
+<DT><TT><B>enabled</B></TT>
+<DD>Allows you to disable CGI handling in one stroke.  If this is 1, URLs
+that translate to a CGI are allowed.  If this is 0, URLs that translate to a
+CGI are rejected with a code 501 (Not implemented).
+<DD>Default: 1 (CGI is enabled)
+
+<DT><TT><B>workdir</B></TT>
+<DD>Defines the directory where CGI programs will run. The web server must
+have write access to this directory. You can tell Xitami to always use the
+script directory by specifying "-". (This is useful if you put scripts in
+various subdirectories.)  This option applies to filters too.
+<DD>Default: - (script directory)
+
+<DT><TT><B>wildcard</B></TT>
+<DD>Defines whether the CGI URL indicator ('/cgi-bin') is allowed anywhere
+in the URL, or only at the start.  If 1, it is allowed anywhere in the URL.
+If 0, it may come only at the start of the URL.  Note that setting this to
+1 opens a significant security hole, if you also allow people to FTP files
+into the HTTP area.  As soon as someone creates a directory called /cgi-bin,
+they can upload, and execute, CGI programs.  In some configurations this is
+desirable.  In other configurations (e.g. if you allow your users to upload
+CGI scripts, or if you do not do FTP uploads into the HTTP space) it can be
+desirable.
+<DD>Default: 0 (/cgi-bin matches only at the start of the URL).
+
+<DT><TT><B>timeout</B></TT>
+<DD>The maximum time, in seconds, that a CGI program may run. This option
+prevents looping CGI programs from blocking the server system for more than
+a short period. However, you will want to tune it if you run exceptionally
+slow CGIs, e.g. large database searches. (Which we do not recommend; you
+should always aim for a response time of less than 2 seconds, and 5 seconds
+for 'heavy' processing.)  If you set this to zero, Xitami lets CGIs run for
+an arbitrarily long time (actually one hour) before killing them.
+<DD>Default: 60
+
+<DT><TT><B>monitor</B></TT>
+<DD>The frequency, in milliseconds, at which Xitami monitors the progress of
+CGI programs. If you raise this time to 500, for example, Xitami will check
+the CGI program's progress every 1/2 second. Anything less than 100 is not a
+good idea, probably, since it will slow-down the server.
+<DD>Default: 200
+
+<DT><TT><B>dirlist</B></TT>
+<DD>If 1, the server will generate a directory listing for any URL that
+refers to a CGI directory not containing a default file. If 0, such accesses
+result in a 403 Forbidden response.
+<DD>Default: 0 (listings are allowed)
+
+<DT><TT><B>msdos-style</B></TT>
+<DD>If 1, CGI programs and scripts get all filenames passed through the
+environment and on the command line in MS-DOS format (using backslashes);
+otherwise they get filenames in Unix format (using forward slashes).
+<DD>Default: 0.
+
+<DT><TT><B>debug</B></TT>
+<DD>If 1, the server creates files containing the CGI input and output
+streams, called tmp<I>xxxxx</I>.cgi and tmp<I>xxxxx</I>.cgo. You can use
+these to debug CGI programs' output.
+<DD>Default: 0 (no debugging output)
+
+<DT><TT><B>stdio</B></TT>
+<DD>If 1, the server uses standard input/output streams to pass CGI input
+and output data. This is suitable for languages such as C, Perl, etc. that
+have access to stdin and stdout streams. When using languages that cannot
+read from stdin or write to stdout, you must set this value to 0, and refer
+to the CGI_STDIN and CGI_STDOUT environment variables.
+<DD>Default: 1 (use standard i/o streams).
+
+<DT><TT><B>mixed-url</B></TT>
+<DD>If 1, allows images, HTML, and other files in the cgi-bin directory. The
+CGI program can refer to these using relative addressing. If 0, such files
+are not permitted. Note that in any case, executable files (such as Perl
+scripts) are always executed, never downloaded.
+<DD>Default: 1 (non-executable files may be placed in /cgi-bin)
+
+<DT><TT><B>errlog</B></TT>
+<DD>Specifies a filename for output of CGI program errors. A CGI program can
+send error messages to the stderr stream; these are captured in this log
+file.
+<DD>Default: Empty (no logging of CGI errors)
+
+<DT><TT><B>environment</B></TT>
+<DD>If 1, the CGI program gets the full web server environment, including
+values such as PATH. If 0, does not have access to such data. The
+environment data can assist a hostile attack on the host system.
+<DD>Default: 1 (server environment is supplied)
+
+<DT><TT><B>http-fields</B></TT>
+<DD>Defines whether the HTTP request header fields are passed to the CGI
+program or not.
+<DD>Default: 1 (HTTP header fields are supplied)
+
+<DT><TT><B>http-prefix</B></TT>
+<DD>Specifies the prefix used to identify HTTP header fields in the CGI
+program environment. Note that this should be different from the
+form-prefix, so that there is no chance of an overlap in field names. To
+specify 'no prefix', use http-prefix="".
+<DD>Default: HTTP_
+
+<DT><TT><B>form-fields</B></TT>
+<DD>If 1, the form data (coming from a GET or POST method) is supplied as
+environment variables. This can be required by some CGI programs. However,
+when large forms are used, this may cause the environment to be over-filled.
+Since the form data is also available to the CGI program on its standard
+input device, it can be useful to set this option to 0.
+<DD>Default: 1 (form data is included in environment)
+
+<DT><TT><B>form-prefix</B></TT>
+<DD>Specifies the prefix used to identify form data fields in the CGI
+program environment. To specify 'no prefix', use form-prefix="".
+<DD>Default: FORM_
+
+<DT><TT><B>form-query</B></TT>
+<DD>If 1, the form data (coming from a POST method) is supplied as the
+environment variable QUERY_STRING. If 0, this data is supplied as separate
+environment variables, and on the standard input device but not as a
+QUERY_STRING environment variable. Some CGI products (we know of Progress
+Webspeed) will barf if this is turned-on, since they do not expect input in
+both this string and on stdin.
+<DD>Default: 0 (form data is not included in QUERY_STRING)
+</DL>
+
+<H3><A NAME="TOC36">The [CGI-Environment] Section</A></H3>
+
+<P>This section is used to define specific CGI environment variables.
+Each definition is taken literally and passed to the CGI program.
+This can be useful when using virtual hosts.  For example:
+<PRE>[CGI-Environment]
+HOSTNAME=sales
+</PRE>
+
+<A NAME="cgi-alias">&nbsp;</A>
+<H3><A NAME="TOC37">The [CGI-Alias] Section</A></H3>
+
+<P>This section lets you define multiple CGI program roots. Each alias
+specifies a name and a path. For example:
+<PRE>[CGI-Alias]
+demos=G:\site\demos
+</PRE>
+<P>The alias name may contain '/'. It is not case sensitive. In A URL, the
+alias comes at the start, e.g.:
+<PRE>http://127.0.0.1/demos/calendar
+</PRE>
+
+<H3><A NAME="TOC38">The [Lrwp] Section</A></H3>
+
+<P>This section controls the LRWP (long-running web process) protocol.
+
+<DL>
+<DT><TT><B>enabled</B></TT>
+<DD>Specifies whether the LRWP agent is enabled or not.
+<DD>Default: 1.
+
+<DT><TT><B>port</B></TT>
+<DD>Specifies the port on which the LRWP agent accepts connections.
+<DD>Default: 81.
+
+<DT><TT><B>webmask</B></TT>
+<DD>Specifies the webmask for LRWP clients. Normally this is restricted to
+local LRWP clients, but you can also construct LRWP networks from multiple
+servers. Use 'webmask=local' to specify just local addresses, or
+'webmask=item,item,...' to specify one or more types of access. Each item
+allows or excludes some IP address(es): '250.12.13.*' allows matching
+addresses, '!250.12.13.*' excludes matching addresses (but does not allow
+others). '!250.12.13.*,*' excludes one set of addresses and allows all
+others. 'webmask=@iplist.txt' reads the list of webmasks from a text file.
+<A HREF="#webmasks">More information is available.</A>
+<DD>Default: local.
+
+<DT><TT><B>allow-all</B></TT>
+<DD>Allows all LRWP clients to connect. If this is set to 1, any LRWP
+application will be allowed to connect. Otherwise the LRWP-Application
+section must be used to authorise specific applications, and optionally
+specify a password to use during the authentication stage.
+<DD>Default: 1.
+</DL>
+
+<H3><A NAME="TOC39">The [Lrwp-Application] Section</A></H3>
+
+<P>This section consists of one entry per application name (either URL
+prefix, or a URL "extension" name). The entry should either to be set to
+"*" to indicate the application is allowed without authentication, or to a
+password/phrase that is used in LRWP 2.0 authentication with that
+application. If a password/phrase is specified, then LRWP 1.0 clients will
+not be allowed to connect with that name (as they cannot perform the
+required authentication).
+
+<P>This is an example of enties in the [Lrwp-Application] section:
+
+<PRE>[LRWP-Application]
+    testapp=*             # Connect without any password
+    secureapp=funky161    # Connect using secure password
+</PRE>
+
+<H3><A NAME="TOC40">The [Security] Section</A></H3>
+
+<P>This section defines HTTP server security options:
+
+<DL>
+<DT><TT><B>filename</B></TT>
+<DD>Specifies the Basic Authentication file.
+<DD>Default: xitami.aut
+
+<DT><TT><B>password-case</B></TT>
+<DD>If 1, passwords are case-sensitive.  If 0, passwords are
+always converted to lower-case before validation.  If you set
+this to 0, be sure to use lower-case passwords in the password
+file.
+<DD>Default: 1 (case-sensitive)
+
+<DT><TT><B>dirlist</B></TT>
+<DD>If 1, the server will generate a directory listing for any
+URL that refers to a directory not containing a default file.
+If 0, such accesses result in a 403 Forbidden response.
+<DD>Default: 1 (listings are allowed)
+
+<DT><TT><B>admin</B></TT>
+<DD>If 1, the server will allow access to the web-based administration pages
+(WBA). If 0, the WBA agent will not be started. This is a safe way to
+disable WBA access, for sites where this is not needed and poses a potential
+security hole.
+<DD>Default: 1 (WBA is enabled)
+
+<DT><TT><B>superuser</B></TT>
+<DD>Specifies the Superuser password. If this is "" or "-", no superuser
+access is allowed. Anything else is accepted as a password for all protected
+resources, including the online administration functions. This password
+overrides the webmask for any resource. So, <EM>be really careful</EM>.
+Okay, I warned you. (It does not override the webmask for the entire
+server.)
+<DD>Default: "" (disabled)
+
+<DT><TT><B>safepaths</B></TT>
+<DD>If 1, the server will refuse access to 'unsafe' URLs, which is a notion
+that Microsoft invented when they allowed the same file to have a short and
+a long filename.  When this is enabled, Xitami rejects any URLs that contain
+a directory name which can be translated to a different long name and the
+user receives a 403 error message.  If 0, this check is not done.
+<DD>Default: 1 (security check is enabled)
+
+<A NAME="webmasks">&nbsp;</A>
+<DT><TT><B>webmask</B></TT>
+
+<DD>Limits the set of clients that can connect to the server. This is meant
+to provide an easy way of creating an internal web service. The web mask is
+one or more patterns, each of which specifies some valid or excluded
+addresses. A pattern is some IP address in string format, possibly with '*'
+replacing part of the end of address. For instance, the pattern
+'250.12.13.*' restricts access to clients with IP addresses starting with
+'250.12.13'. If you start a pattern with '!', the pattern excludes all
+clients with matching addresses. A pattern '*' matches all addresses. Use
+spaces and/or commas to separate patterns. The option 'webmask=local' has
+special meaning: it restricts access to the local system, whatever its IP
+address.  You can't use the word 'local' in a list of webmasks.
+
+<P>If you want to use the same webmask set in a number of places, or if you
+have a long list of addresses, you can use '@filename' as the webmask. Enter
+the webmasks in the specified file, using whitespace or blank lines freely.
+If the webmask file is not present, Xitami displays an error message in its
+log files, and acts as if the webmask was not defined at all.
+
+<P>Some examples:
+<PRE>webmask=local            # grant access to local browsers only
+webmask=192.*             # grant access to addresses 192.* only
+webmask=192.*,127.0.0.1   # 192.* and local host
+webmask=!192.*,*          # deny access to 192.* addresses
+webmask=@iplist.txt       # read webmask from a text file
+</PRE>
+
+<DT><TT><B>setuid</B></TT>
+<DD>Specifies whether the server switches to a safe user id and group at
+startup.  This only works under Unix systems.  When you use this option, you
+can be certain that the server runs with the minimum necessary privileges.
+<DD>Default: 0 (disabled)
+
+<DT><TT><B>setuid-user</B></TT>
+<DD>When the security:setuid option is enabled, switches to this user id
+after opening its HTTP and FTP ports.  You should ensure that the user id
+exists and has suitable authority to write to log files, etc.
+<DD>Default: nobody
+
+<DT><TT><B>setuid-group</B></TT>
+<DD>When the security:setuid option is enabled, switches to this group id
+after opening its HTTP and FTP ports.  You should ensure that the group id
+exists and has suitable authority to write to log files, etc.  If you set
+this option to an empty value, e.g. "", Xitami does not change the group id.
+<DD>Default: nogroup
+</DL>
+
+<A NAME="serverlog">&nbsp;</A>
+<H3><A NAME="TOC41">The [ServerLog] Section</A></H3>
+
+<P>This section controls the server error and information log:
+<DL>
+<DT><TT><B>enabled</B></TT>
+<DD>Specifies whether server logging is enabled or not.
+<DD>Default: 1 (enabled).
+
+<DT><TT><B>filename</B></TT>
+<DD>Specifies the name of the server log file. If this value is "NULL"
+(spelling is important) then no log files are produced at all. This is
+equivalent to running Xitami in console mode with the -q option.
+<DD>Default: xitami.log
+
+<DT><TT><B>cycle</B></TT>
+<DD>Can be one of:
+<UL>
+<LI>startup, or 0 - cycle log when the server is starts;
+<LI>hourly, or 1 - cycle log each hour;
+<LI>daily, or 2 - cycle log each day;
+<LI>weekly, or 3 - cycle log each week;
+<LI>monthly, or 4 - cycle log each month, or
+<LI>manual, or 5 - manual cycling only.
+</UL>
+<DD>Default: daily.
+</DL>
+
+<H3><A NAME="TOC42">The [AccessLog] Section</A></H3>
+
+<P>This section controls the server access log:
+
+<DL>
+<DT><TT><B>enabled</B></TT>
+<DD>Specifies whether access logging is enabled or not.
+<DD>Default: 1 (enabled).
+
+<DT><TT><B>filename</B></TT>
+<DD>Specifies the name of the access log file.
+<DD>Default: access.log
+
+<DT><TT><B>cycle</B></TT>
+<DD>Can be one of:
+<UL>
+<LI>startup, or 0 - cycle log when the server is starts;
+<LI>hourly, or 1 - cycle log each hour;
+<LI>daily, or 2 - cycle log each day;
+<LI>weekly, or 3 - cycle log each week;
+<LI>monthly, or 4 - cycle log each month, or
+<LI>manual, or 5 - manual cycling only.
+</UL>
+<DD>Default: daily.
+
+<DT><TT><B>local</B></TT>
+<DD>Specifies whether to include local addresses or not.
+<DD>Default: 1 (include local addresses).
+</DL>
+
+<H3><A NAME="TOC43">The [ErrorLog] Section</A></H3>
+
+<P>This section controls the server error log:
+
+<DL>
+<DT><TT><B>enabled</B></TT>
+<DD>Specifies whether error logging is enabled or not.
+<DD>Default: 1 (enabled).
+
+<DT><TT><B>filename</B></TT>
+<DD>Specifies the name of the error log file.
+<DD>Default: errors.log
+
+<DT><TT><B>cycle</B></TT>
+<DD>Can be one of:
+<UL>
+<LI>startup, or 0 - cycle log when the server is starts;
+<LI>hourly, or 1 - cycle log each hour;
+<LI>daily, or 2 - cycle log each day;
+<LI>weekly, or 3 - cycle log each week;
+<LI>monthly, or 4 - cycle log each month, or
+<LI>manual, or 5 - manual cycling only.
+</UL>
+<DD>Default: daily.
+
+<DT><TT><B>local</B></TT>
+<DD>Specifies whether to include local addresses or not.
+<DD>Default: 1 (include local addresses).
+</DL>
+
+<A NAME="rdns">&nbsp;</A>
+<H3><A NAME="TOC44">The [Rdns] section</A></H3>
+
+<P>This section defines the configuration of the reverse-DNS lookups used by
+Xitami to translate IP addresses for its access log files.
+
+<DL>
+<DT><TT><B>primary-server</B></TT>
+<DD>Defines the primary DNS server used for lookups.  This value is
+mandatory for RDNS lookups.
+<DD>Default: 127.0.0.1.
+
+<DT><TT><B>secondary server</B></TT>
+<DD>Defines a secondary DNS server, if one is available.  This will provide
+a backup RDNS server if the primary server does not respond.
+<DD>Default: "".
+
+<DT><TT><B>recurse-lookups</B></TT>
+<DD>Specifies whether Xitami uses recursive lookups or not.  Depending on
+the DNS configuration, this can be faster or slower than non-recursive
+lookups.
+<DD>Default: 1 (use recursive lookups).
+
+<DT><TT><B>debug</B></TT>
+<DD>Specifies whether Xitami should output trace entries for its RDNS work.
+If 1, each RDNS lookup sends trace information to debug.log.  Use this if
+you are having problems getting reverse-DNS lookups to work.
+<DD>Default: 0 (do not debug).
+
+<H3><A NAME="TOC45">The [Mime] Section</A></H3>
+
+<P>This section defines additional MIME file types; the following
+MIME types are defined by default (if xitami.cfg is not present):
+
+<DL>
+<DT><TT><B>default</B></TT>
+<DD>Defines default MIME type for file extensions that are not
+otherwise defined.
+<DD>Default: */*
+
+<DT><TT><B>txt</B></TT>
+<DD>Defines MIME type for files with extension .txt.
+<DD>Default: text/plain
+
+<DT><TT><B>htm</B></TT>
+<DD>Defines MIME type for files with extension .htm.
+<DD>Default: text/html
+
+<DT><TT><B>html</B></TT>
+<DD>Defines MIME type for files with extension .html.
+<DD>Default: text/html
+
+<DT><TT><B>jpg</B></TT>
+<DD>Defines MIME type for files with extension .jpg.
+<DD>Default: image/jpeg
+
+<DT><TT><B>jpeg</B></TT>
+<DD>Defines MIME type for files with extension .jpeg.
+<DD>Default: image/jpeg
+
+<DT><TT><B>gif</B></TT>
+<DD>Defines MIME type for files with extension .gif.
+<DD>Default: image/gif
+
+<DT><TT><B>doc</B></TT>
+<DD>Defines MIME type for files with extension .doc.
+<DD>Default: application/msword
+</DL>
+
+<P>You can add to, and modify, these definitions. Note that the extension
+and MIME type must be specified in lowercase. To specify a MIME type for
+files with no extension, use ".=xxx/xxx".
+
+<H3><A NAME="TOC46">The [Console] Section</A></H3>
+
+<P>This section controls the browser-based admin screens.
+
+<DL>
+<DT><TT><B>startup</B></TT>
+<DD>Specifies the initial screen to show; the values for this option
+are deliberately not documented.
+<DD>Default: 1 (main page).
+
+<DT><TT><B>refresh</B></TT>
+<DD>Specifies whether the console information screens should refresh
+automatically or not. This only works with browsers that support the
+&lt;META HTTP-EQUIV="REFRESH"&gt; tag. On some browsers, the refresh option
+can cause warning messages.
+<DD>Default: 0 (refresh off).
+
+<DT><TT><B>rate</B></TT>
+<DD>Specifies the rate at which the refresh occurs, in seconds.
+<DD>Default: 10 seconds.
+
+<DT><TT><B>capture</B></TT>
+<DD>Specifies whether console output is sent to a file or not.
+<DD>Default: 1 (console output is captured).
+
+<DT><TT><B>filename</B></TT>
+<DD>If the capture option is set, this option specifies a filename.
+<DD>Default: console.log.
+
+<DT><TT><B>append</B></TT>
+<DD>if the capture option is set, this option controls whether the
+console log is cleared each time the server is started, or not.
+<DD>Default: 0 (console.log is cleared each time).
+
+<DT><TT><B>javascript</B></TT>
+<DD>If 1, the WBA screens will use small amounts of JavaScript to
+improve the user-interface; for instance placing the cursor on the
+first input field automatically.  If 0, JavaScript will not be used.
+In general enabling JavaScript will give better results.
+<DD>Default: 1 (use JavaScript).
+
+<DT><TT><B>large-icons</B></TT>
+<DD>If 1, the WBA screens will show large icons on the icon bar.  If
+0, they will show small icons with only images, no text labels.
+<DD>Default: 1 (show large icons with text labels).
+</DL>
+
+<H3><A NAME="TOC47">The [Win32] Section</A></H3>
+
+<P>This section controls options specific to the 32-bit Windows
+versions of Xitami.
+
+<DL>
+<DT><TT><B>16bit-cgi</B></TT>
+<DD>Defines whether 16-bit CGIs are supported or not.  If they
+are, all CGIs are run in a separate virtual machine.  This is
+safe but slow.  If you use only 32-bit CGIs, you can run CGIs
+faster by setting this option to 0.
+<DD>Default: 1 (support 16-bit CGIs)
+
+<DT><TT><B>secure</B></TT>
+<DD>If 1, the 'Stop', 'Start', and 'Terminate' buttons on the Xitami Windows
+control panel are disabled. This is intended for configurations where the
+server may only be halted by an authorised administrator, using the WBA
+control panel.
+<DD>Default: 0 (control panel is fully enabled)
+
+<DT><TT><B>service-name</B></TT>
+<DD>This option is used under Windows NT for the NT service version of
+Xitami.  You can only change this by manually editing defaults.cfg; it is
+not shown in the WBA.  Change this before installing xiwinnt.  You can use
+this option to install multiple instances of Xitami each with a different
+service name and title (as defined by the win32:service-text option).  You
+will need a separate working directory for each such Xitami service that you
+start.
+<DD>Default: Xitami.
+
+<DT><TT><B>service-text</B></TT>
+<DD>This option is used under Windows NT for the NT service version of
+Xitami.  You can only change this by manually editing defaults.cfg; it is
+not shown in the WBA.  Change this before installing xiwinnt.
+<DD>Default: Xitami Web Server.
+</DL>
+
+<H3><A NAME="TOC48">The [WSX] Section</A></H3>
+
+<P>This section is used to define web server extension (WSX) agents. A WSX
+agent is written using the SMT toolkit. An example of a WSX agent is the
+on-line administration agent. See the section on <A href="index11.htm#wsx">WSX development</A> for
+details. Each entry in this section defines a URL prefix and an agent name.
+The prefix identifies all URLs passed to this agent, and consists of one or
+more directory names separated by '/'. These are the standard WSX agents
+that Xitami defines:
+<PRE>[WSX]
+    admin=xiadmin       #   Web-based administration agent "/admin"
+    error=xierror       #   Error simulation agent "/error?xxx"
+</PRE>
+
+<P>You can modify this section if you want to add your own WSX agents, or
+disable one of the standard agents. For example, to disable the on-line
+administration feature, modify the above entry as follows:
+<PRE>[WSX]
+    admin=""
+</PRE>
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="index3.htm">&lt;</A>
+ | <A href="index5.htm">&gt;</A> | <A href="license.htm">&gt;&gt;</A>
+<BR><FONT SIZE=2>
+| <A href="index.htm">Welcome To Xitami</A>
+| <A href="index1.htm">Table Of Contents</A>
+| <A href="index2.htm">Installing Xitami</A>
+| <A href="index3.htm">Administration</A>
+| <EM>Configuration</EM>
+| <A href="index5.htm">Using The Common Gateway Interface (CGI)</A>
+| <A href="index6.htm">Using SSI and Filters</A>
+| <A href="index7.htm">Image Maps</A>
+| <A href="index8.htm">Virtual Hosts</A>
+| <A href="index9.htm">The FTP Service</A>
+| <A href="index10.htm">A Beginner's Guide</A>
+| <A href="index11.htm">Writing Web Server Extension (WSX) Agents</A>
+| <A href="index12.htm">Extending Xitami with External Peer Processes</A>
+| <A href="index13.htm">FAQ</A>
+| <A href="index14.htm">Technical Implementation</A>
+| <A href="index15.htm">Getting Support</A>
+| <A href="index16.htm">Release History</A>
+| <A href="license.htm">License Agreement</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="/images/im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0>
+</A>
+<BR><FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

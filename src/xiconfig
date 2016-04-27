@@ -1,0 +1,46 @@
+#! /bin/sh
+#
+#  xiconfig - XITAMI config script for UNIX
+#
+#  Written:  99/05/20  Pieter Hintjens <ph@imatix.com>
+#  Revised:  99/05/20  Pieter Hintjens <ph@imatix.com>
+#
+
+if [ -f defaults.cfg ]; then
+    echo "Delete defaults.cfg and run xiconfig again."
+else
+    echo ""
+    echo "Xitami comes with a web-based admin (WBA) console that you can access"
+    echo "using the url 'http://hostname/admin'.  The WBA is protected by a"
+    echo "username and password, and by default can only be run from browsers"
+    echo "local to the server.  You can now configure these security options."
+    echo ""
+    echo "Choose a username for /admin:"
+    read username
+    echo "Choose a password for /admin:"
+    read password
+    echo "Enter 'y' if you want to allow remote access to the WBA:"
+    read webmask
+
+    echo "You can change the /admin username, password, and webmask at any"
+    echo "time by editing the file 'defaults.aut'.  Xitami reads changes to"
+    echo "its configuration files on-the-fly - you do not need to restart it."
+    echo ""
+    echo "Creating default config files 'defaults.cfg' and 'defaults.aut'..."
+    echo "#  Created at installation time" >defaults.cfg
+    echo "#"                              >>defaults.cfg
+    echo "! Loading defaults.cfg file..." >>defaults.cfg
+    echo "[Security]"                     >>defaults.cfg
+    echo "    filename=defaults.aut"      >>defaults.cfg
+    echo "#  Created at installation time" >defaults.aut
+    echo "#"                              >>defaults.aut
+    echo "[/Admin]"                       >>defaults.aut
+    echo "    $username=$password"        >>defaults.aut
+    if [ "$webmask" != "y" ]; then
+        echo "    webmask=local"          >>defaults.aut
+    fi
+    echo "[Private]"                      >>defaults.aut
+    echo "    Jacky=robusta"              >>defaults.aut
+fi
+
+

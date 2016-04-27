@@ -1,0 +1,365 @@
+Changes To SMT Kernel
+'*' marks changes that potentially affect existing client code.
+
+26 Oct 1998
+  - max. size of sendfmt() message changed from 1024 to 4096
+
+27 Mar 1998
+  - vsnprintf used instead of vsprintf where possible
+
+28 Dec 1997
+  * Reply messages from SMTTRAN changed
+  - SMTTRAN: added support for huge (2Gb) blocks
+  - SMTSOCK: added support for huge (2Gb) blocks
+
+23 Dec 1997
+  - SMTRDNS: new reverse-DNS agent
+  - SMTHLOG: new webserver log translation agent
+  - XIXLAT:  new webserver log translation main program
+  - SMTTST3: new RDNS test agent
+  - TSTRNDS: new RDNS test main program
+
+18 Aug 1997
+  - SMTLIB: added new function lazy_creat_text().
+
+  * SMTHTTP: log file and authentication file removed from agent argument
+    list.  These now come exclusively from the config file.
+
+29 Jul 1997
+  - SMTLIB: shutdown_pending flag logic altered to improve reaction of
+    recycle_module() during shutdown period.
+
+01 Jul 1997
+  - SMTTIME: now handles forwards/back clock changes correctly
+
+26 Jun 1997
+  * SMTTIME: always flushes requests for requesting thread
+  - SMTTRAN: failed if block larger than 16K was transferred - limit is
+    now +-64K as advertised.
+22 Jun 1997
+  - SMTSOCK: failed if sent an invalid method; now more robust.
+
+---- Released version 2.30
+16 Jun 1997
+  - SMTLIB: corrected timer signal handling; this failed under some
+    situations.
+
+27 May 1997
+  - SMTSLOT: added RESET method
+
+22 May 1997
+  - SMTLIB and SMTOPER: now use SFL console output functions (coprintf).
+
+20 May 1997
+  - smtdefn.h also includes sfl.h and smtlib.h.
+  - SMTLIB.C: now activates threads in order of priority; did not always
+              do this, so a fast thread could get stuck behind a slow one.
+
+14 May 1997
+  - SMTHTTPL: Added cgi:exit_ok to config.
+
+13 May 1997
+  - SMTAUTH: loads authorisation data directly into a symbol table.
+
+09 May 1997
+  - SMTLIB:  thread id was incorrectly built; now a sequential nbr
+  - SMTLIB:  agent-> top_threads, thread_tally, switch_tally now correct
+  - SMTSOCK: uses sock_select() in place of sock_select()
+  - SMTSOCK: under Windows, use 1/5th second select() timeout
+  - SMTHTTP: added cgi:monitor and cgi:timeout to config file
+
+04 May 1997
+  - SMTHTTP: password protection tightened-up; specifically for CGIs
+
+---- Released version 2.22
+
+24 Apr 1997
+  - LRSMT20.C renamed to SMTSCHM.C; all programs modified
+
+23 Apr 1997
+  - Added server:keep_alive_max to config
+  - Added server:input_timeout to config
+  - Fixed bug in keep alive headers
+  - Fixed bug in very-long headers (Referer field)
+
+22 Apr 1997
+  - Image maps were broken by smthttp.c; fixed.
+
+13 Apr 1997
+  - New function in SMTLIB, lazy_open_text() for text files.
+
+10 Apr 1997
+  - server:portbase2..9 used for backup port bases; no defaults.
+
+09 Apr 1997
+  - SMTHTTP allows /cgi-bin to contain non-executable files, e.g. images.
+    (Only if cgi:mixed_url is 1)
+  - SMTHTTP allows Keep-Alive: for CGI programs
+
+07 Apr 1997
+  - SMTHTTP uses cgi:errlog to log CGI stderr output
+
+02 Apr 1997
+  - SMTTRAN accepts new method: PUT_SLICE, for part of a file
+  - SMTHTTP had a faulty assertion that occasionally bombed
+  - SMTHTTPL did not use If-Modified-Since correctly; now does
+  - SMTLIB no longer uses system-specific code (was broken on OS/2)
+
+01 Apr 1997
+  - SMTLOG PLAIN method was being ignored; now works correctly
+  - SMTHTTP was generating incorrect log files
+
+---- Released version 2.21
+
+18 Mar 1997
+  - SMTTIME: added FLUSH method.
+
+17 Mar 1997
+  - SMTAUTH robust against missing authorisation file
+  - SMTHTTP allows directory listings of CGI bin directory
+
+16 Mar 1997
+  - SMTHTTPL modified for configuration file, various new options:
+      * CGI URI split into CGI name and PATH_INFO, heuristically
+      * server:error_header provides text for error return pages
+      * server:error_footer provides text for error return pages
+      * mime:xxx defines mime type for extension xxx; mime:htm required
+      * extensions always lowercase
+      * server:default<n> defines default page search order
+      * cgi:http_fields indicates whether HTTP fields loaded into CGI env.
+      * cgi:http_prefix is prefix thereof; default HTTP_
+      * cgi:form_fields indicates whether form fields loaded into CGI env.
+      * cgi:form_prefix is prefix thereof; default FORM_
+      * PATH_INFO now supplied to CGI program
+      * cgi:form_query control QUERY_STRING coming from PUT body
+
+14 Mar 1997
+  - SMTHTTP uses config symbol table for various options.
+  - SMTAUTH supports reopen method, now called by SMTHTTP.
+  - SMTTIME uses Windows timers under Windows; previously looped (!)
+  - SMTHTTP/L changed for CGI handling; will now accept CGI directory in
+    any location, and CGI's at any point in the webpage directory.
+  - SMTLOG CYCLE event now accepted when file is open (close/cycle/open).
+
+07 Mar 1997
+  - SMTHTTPL always added http://hostname for map URLs; now only adds
+    if URL does not contain a scheme name.  Ie. allows mailto:, and
+    other absolute URLs.
+
+27 Feb 1997
+  - SMTHTTPL returns .doc files as application/msword
+
+19 Feb 1997
+  - SMTLIB corrected for bug in recycle_module() during shutdown.
+
+---- Released version 2.20
+
+09 Feb 1997
+  - SMTHTTP returns */* MIME type for unknown file types, instead of
+    text/html.  This allows server to transfer all file types.
+
+26 Jan 1997
+  - SMTHTTPL provides CGI programs with arguments to GET method in
+    same way as for POST method; i.e. on stdin file.
+
+19 Jan 1997
+  - SMTLIB animation output corrected, for changes in sfltron.c.
+  - SMTHTTPL generates CGI environment variables better (see doc).
+  - SMTHTTP handles too-long requests correctly (returns 500 or 413).
+
+18 Jan 1997
+  - SMTHTTP did not show correct message after SOCKET_ERROR; fixed.
+
+06 Jan 1997
+  - SMTHTTP tries 5080 after 80 (8080 commonly used for proxies);
+    notifies user correctly about what it is doing.
+  - SMTOPER is quiet, if -q switch used for xitami.c
+  - SMTHTTPL removes '..' from URL, resolving if (safely) possible
+  - A bug in smthttp.c caused core dumps after running CGI processes.
+
+01 Jan 1997
+  - SMTOPER output goes to stderr in anycase, and to log file if so
+    requested.
+
+30 Dec 1996
+  - New agent, SMTSIMU: does network delay simulation, currently for
+    UDP only.
+  * SMTLIB.H split into two files: SMTDEFN.H contains all agent-specific
+    definitions, SMTLIB.H is for the kernel definitions only.
+
+---- Released version 2.10
+
+15 Dec 1996
+  - SMTSOCK now goes to sleep when there are no more requests to
+    handle; previously is always sent itself a timeout event to loop.
+  - SMTHTTP creates ACCESS.LOG using Cern/NCSA common format
+
+13 Dec 1996
+  - SMTLOG has new method, CYCLE, to cycle a log file automatically.
+  - SMTLOG has new methods, PLAIN and STAMP to control time-stamping.
+
+25 Nov 1996
+  - SMTTRAN reworked, since it was failing under concurrent use.
+
+  * SMTSOCK now always formats SOCK_CLOSED and SOCK_TIMEOUT events
+    as SOCK_READ_OK.
+
+12 Nov 1996
+  - COSMOS renamed to XITAMI, a strange name that has the single benefit
+    of being unknown to the world so far.  There have been worse reasons.
+
+  - SMTSOCK supports an additional method, INPUTR, which repeats the
+    input method on a socket.
+
+22 Oct 1996
+  - SMTLIB made more robust: smt_atexit() functions are *always* called
+    when the application ends, so long as the process has some control.
+
+  - SMTLIB thread error handling improved: instead of killing the whole
+    application, only the affected thread is ended.
+
+08 Oct 1996
+  - SMTSLOT provides events to switch applications on and off.
+
+25 Sep 1996
+  - SMTTIME provides new method, WAKEUP.  Takes same arguments as ALARM.
+
+23 Sep 1996
+  * Event body has been changed to byte *, to reduce number of casts
+    needed when using exdr_read/exdr_write.
+
+  - SMTTIME correctly formats its reply message using SMT_TIME_REPLY.
+    Previously it just returned the argument block.
+
+  - SMT kernel handles interrupt signals better; Ctrl-C should be trapped
+    more solidly than before.
+
+11 Sep 1996
+  - SMTSOCK provides socket i/o tracing: call smtsock_trace (TRUE) to
+    enable it and smtsock_trace (FALSE) to switch it off.  If you have
+    a trace file open, the trace goes there, else it goes to stdout.
+
+08 Sep 1996
+  - SMTSOCK set ip_nonblock to FALSE, for some reason.  This might have
+    caused trouble on some UNIX systems doing a connect via SMTSOCK.
+    (Note: put back to FALSE; see SMTSOCK code for explanation. :-( )
+
+  - method_declare() accepts the event number SMT_NULL_EVENT; incoming
+    events are then discarded.  This is useful if you get Ok events from
+    some agent, but you do not want to have to process them.
+
+07 Sep 1996
+  * Changed SMT_SOCK_ERROR format, so that the message text is the first
+    field.  This means that you can reference thread-> event-> body after
+    a socket error, without unpacking the event body.  See the module
+    signal_socket_error in various programs for an example.
+
+06 Sep 1996
+  - New agent, SMTTRAN, does TCP file transfer and block transfer.  A block
+    is sent as a dbyte length header in network format, followed by the
+    block data.  A file is sent as a stream, read from disk.  The socket
+    must be open.  Also receives files and blocks.  Will be enriched to
+    include text mode transfer.  Will be used in ftp server.
+
+  - New agent, SMTUPM, for unattended processes.  This is a tool that lets
+    one start processes at specified times (like crontab), with control
+    over terminals and other devices.  Still under development.
+
+  - UPMCLI is a new program that will provide a command-line interface to
+    the UPM server (SMTUPM).  Still under development.
+
+  - All standard agents have been changed to use exdr_writed in place of
+    exdr_write; this is more robust and will abort if there is an attempt
+    to write past the buffer.
+
+  * SMTECHO agent has been revised to simplify passing of data from master
+    to client threads.  You may want to check the differences.
+
+  - SMTSOCK supports a new method, READR, which loops on the socket, sending
+    SOCK_READ_OK events each time some, or enough, data arrives.
+
+29 Aug 1996
+  - SMTLOG expects the log file name as part of the OPEN event.  Standard
+    approach is to create thread with empty name, then send OPEN event to
+    create log file as specified.  For compatibility with older code,
+    SMTLOG will use thread name if the OPEN event body is empty.
+
+  - SMTLOG supports a new method, APPEND.  Works like OPEN, but in append
+    mode.
+
+27 Aug 1996
+  - You can now pass an event to a thread as soon as it is created.  The
+    event supplies the initial event for the dialog.  In this case, do not
+    set the_next_event in initialise_the_thread.  If you want to pass
+    arguments to a child thread, use this mechanism.  Call the event _ARGS
+    and define the corresponding internal event as ok_event.  See smtecho
+    for an example.
+
+  - SMTSOCK automatically deletes any previous request on the same handle
+    in the same direction.  Thus you can independently to an INPUT and
+    OUTPUT on the same handle, but an INPUT will delete a previous INPUT
+    or READ on the same handle.
+
+  - SMTSOCK provides a FLUSH method (SMT_SOCK_FLUSH) which deletes all
+    requests for a specific socket.  This event has no response.
+
+25 Aug 1996
+* - Messages to the socket agent have one extra argument; q describing
+    an arbitrary quad-byte.  This 'tag' is returned with reply events.
+
+    => Modify agents that send events to SMTSOCK
+
+  - New function, recycle_module() lets you repeat the current dialog
+    action module, if called with an argument TRUE.  If called with an
+    argument FALSE, kills any previous recycle request.  Automatically
+    called by the lazy_... i/o functions if the access did not complete.
+
+24 Aug 1996
+* - The socket agent replies with events called SOCK_ERROR, SOCK_CLOSED,
+    SOCK_TIMEOUT.  This change is to make it easier to manage events from
+    several agents.  The OK reply is now: SOCK_INPUT_OK, SOCK_OUTPUT_OK,
+    SOCK_READ_OK, SOCK_WRITE_OK.
+
+    => Modify agents that expect events from SMTSOCK
+
+* - The socket agent CONNECT message has two extra arguments: host number
+    and port number.  If the service name is NULL or "", these two values
+    are used instead.  It is much faster to connect using the literal
+    numbers if you have them.  Note that a NULL or empty host name just
+    means 'current host'.
+
+    => Modify agents that send CONNECTs to SMTSOCK
+
+* - The timer agent replies with events called TIME_ALARM, TIME_ERROR.
+
+    => Modify agents that expect events from SMTTIME; handle TIME_ERROR
+       event.
+
+* - Messages to the timer agent have two extra arguments; mM describing
+    an arbitrary block of memory.  This memory block is returned with the
+    timer event(s).
+
+    => Modify agents that send events to SMTTIME
+
+22 Aug 1996
+* - The SMT object previously called 'SERVER' is now called 'AGENT'.
+    This is to avoid confusing terms like 'HTTP server server' and
+    'HTTP client server'.  We can now say 'HTTP server agent' and 'HTTP
+    client agent'.
+
+    => Regenerate dialog
+       Replace SERVER/Server/server by AGENT/Agent/agent in code.
+
+* - The reply messages also always contain the socket number.  You can
+    use this in complex cases to determine for whom the reply is meant.
+
+    => Modify code that sends messages to/from SMTSOCK
+
+* - The READ message to SMTSOCK must also specify the minumum amount of
+    data to read.  For current operation, you repeat the size argument
+    already supplied, or 0.  For variable-read operation, specify 1.
+    In this last case, SMTSOCK will return whatever it reads, as soon
+    as it has read it.  You must send a message repeatedly; SMTSOCK will
+    execute one read request for each READ message you send it.
+
+    => Modify code that sends READ messages to SMTSOCK

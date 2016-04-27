@@ -1,0 +1,2 @@
+/*  Windows (32-bit) Implementation of the SFL process_create_full()         */
+    return ((PROCESS) 0);         /*  Not supported on this system           */
