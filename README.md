@@ -22,10 +22,18 @@ because (a) it is [already on the iMatix GitHub
 Page](https://github.com/imatix/Xitami-25) and (b) it is not
 consistent with the snapshot of the iMatix website shown.
 
-The license for SMT is in [src/license.txt](src/license.txt).  Briefly
-it allows usage under the GNU General Public License, the Perl Artistic
-License, or with a advertising clause.  See [src/license.txt](src/license.txt)
-for details.
+The original license for Xitami is in [src/license.txt](src/license.txt),
+which puts the source code under the SMT license
+[src/src/smt/license.txt](src/src/smt/license.txt).  Briefly it
+allows usage under the GNU General Public License, the Perl Artistic
+License, or with a advertising clause.  See
+[src/license.txt](src/license.txt) for details.
+
+On [2016-04-29 it was also released under the
+MPLv2](https://github.com/imatix-legacy/license) ([license
+text](https://imatix-legacy.github.io/license/MPLv2.html)), so `Xitami` can
+be used under either GPLv2, the Perl Artistic license, a license
+with an advertising clause or the MPLv2.
 
 This repository contains the Xitami source, binaries,and documentation
 released in a stand alone version, retrieved from:
