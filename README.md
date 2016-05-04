@@ -97,3 +97,19 @@ documentation to approximately the same state.
 The `website/25b4` directory contains the website taken from 
 http://legacy.imatix.com/xitami/ -- which had been updated with
 Xitami 2.5b4 documentation.
+
+## Xitami Pro
+
+The source for "Xitami Pro" (a version of Xitami that included
+support for HTTPS) is available in
+[pub/xipro-2.4-src.tar.gz)(pub/xipro-2.4-src.tar.gz), and a compiled
+early 2000 Win32 binary is available in
+[pub/xipro_24d11.zip](pub/xipro_24d11.zip).
+
+Xitami Pro was originally a closed source extension to Xitami.  The
+source is now made available under the GPLv2 or the MPLv2.
+
+However it is mostly of historical interest, as it was last built
+with a very very old version of OpenSSL, against a very old version
+of Windows, so significant non-trivial work would be required to
+be able to build it again for anything more modern.
